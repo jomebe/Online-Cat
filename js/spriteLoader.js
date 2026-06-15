@@ -25,7 +25,28 @@ const LAYOUT = {
   calico:  { cols: 4, rows: 1, count: 4 },
   tabby:   { cols: 4, rows: 1, count: 4 },
   siamese: { cols: 2, rows: 2, count: 4 },
-  // walk & pet strips are always 4-in-a-row
+};
+
+// Layout for walk animation sheets
+const WALK_LAYOUT = {
+  ginger:  { cols: 2, rows: 2, count: 4 },
+  grey:    { cols: 2, rows: 2, count: 4 },
+  tuxedo:  { cols: 4, rows: 1, count: 4 },
+  white:   { cols: 4, rows: 1, count: 4 },
+  calico:  { cols: 4, rows: 1, count: 4 },
+  tabby:   { cols: 4, rows: 1, count: 4 },
+  siamese: { cols: 2, rows: 2, count: 4 },
+};
+
+// Layout for pet animation sheets
+const PET_LAYOUT = {
+  ginger:  { cols: 2, rows: 2, count: 4 },
+  grey:    { cols: 2, rows: 2, count: 4 },
+  tuxedo:  { cols: 2, rows: 2, count: 4 },
+  white:   { cols: 2, rows: 2, count: 4 },
+  calico:  { cols: 4, rows: 1, count: 4 },
+  tabby:   { cols: 2, rows: 2, count: 4 },
+  siamese: { cols: 2, rows: 1, count: 2 }, // Siamese pet only has 2 frames
 };
 
 // ── Global sprite cache ──
@@ -245,21 +266,23 @@ async function processBreed(breedKey) {
   const baseFrames = splitIntoFrames(processedBase, layout.cols, layout.rows, layout.count);
   // baseFrames: [0]=idle/sit, [1]=walk, [2]=sleep, [3]=play
 
-  // Process walk cycle strip → 4 frames
+  // Process walk cycle strip
   let walkFrames;
   if (walkImg) {
     const processedWalk = removeWhiteBackground(walkImg);
-    walkFrames = splitIntoFrames(processedWalk, 4, 1, 4);
+    const wLayout = WALK_LAYOUT[spriteKey] || { cols: 4, rows: 1, count: 4 };
+    walkFrames = splitIntoFrames(processedWalk, wLayout.cols, wLayout.rows, wLayout.count);
   } else {
     // Fallback: use single walk frame repeated
     walkFrames = [baseFrames[1] || baseFrames[0]];
   }
 
-  // Process pet animation strip → 4 frames
+  // Process pet animation strip
   let petFrames;
   if (petImg) {
     const processedPet = removeWhiteBackground(petImg);
-    petFrames = splitIntoFrames(processedPet, 4, 1, 4);
+    const pLayout = PET_LAYOUT[spriteKey] || { cols: 4, rows: 1, count: 4 };
+    petFrames = splitIntoFrames(processedPet, pLayout.cols, pLayout.rows, pLayout.count);
   } else {
     // Fallback: use idle frame with breathing
     petFrames = createBreathingFrames(baseFrames[0]);
