@@ -43,6 +43,8 @@ export class Cat {
     this.observationMode = false;
     this.laserInterested = null;
     this.hearts = []; // list of rising hearts [{x, y, alpha, size, speed}]
+    this.hitTimer = 0;
+    this.stars = []; // list of rising stars [{x, y, alpha, size, speed}]
 
     // Specific breed colors
     this.colors = this.getBreedColors();
@@ -101,6 +103,29 @@ export class Cat {
         this.hearts.splice(idx, 1);
       }
     });
+
+    // Update hit timer
+    if (this.hitTimer > 0) {
+      this.hitTimer -= delta;
+      this.vx = 0;
+      this.vy = 0;
+    }
+
+    // Update stars
+    this.stars.forEach((s, idx) => {
+      s.y -= s.speed;
+      s.x += Math.sin(this.animTime * 6 + idx) * 0.5;
+      s.alpha -= delta * 1.5;
+      if (s.alpha <= 0) {
+        this.stars.splice(idx, 1);
+      }
+    });
+
+    // Handle hit state
+    if (this.hitTimer > 0) {
+      this.vx = 0;
+      return; // Freeze AI while hit
+    }
 
     // Handle dragging state
     if (this.isDragging) {
@@ -469,7 +494,12 @@ export class Cat {
     let sleepPose = false;
 
     // Apply animation cycles
-    if (this.isDragging) {
+    if (this.hitTimer > 0) {
+      bodyYOffset = Math.sin(this.animTime * 45) * 2.2; // rapid vibration squish
+      headRotation = Math.sin(this.animTime * 35) * 0.25; // dizzy head tilt
+      legsDrawn = false; // tuck legs in surprise!
+      tailAngle = Math.sin(this.animTime * 25) * 0.4; // fast tail wiggle
+    } else if (this.isDragging) {
       bodyYOffset = -4;
       headYOffset = -14;
       headRotation = 0.05;
@@ -739,7 +769,25 @@ export class Cat {
     ctx.lineWidth = 2.2;
     ctx.lineCap = 'round';
 
-    if (sleepingOrPetting) {
+    if (this.hitTimer > 0) {
+      // Squinty / dizzy eyes (>_<)
+      ctx.strokeStyle = '#2f3542';
+      ctx.lineWidth = 2.4;
+      ctx.lineCap = 'round';
+      // Left eye >
+      ctx.beginPath();
+      ctx.moveTo(-8, -4);
+      ctx.lineTo(-4, -2);
+      ctx.lineTo(-8, 0);
+      ctx.stroke();
+
+      // Right eye <
+      ctx.beginPath();
+      ctx.moveTo(8, -4);
+      ctx.lineTo(4, -2);
+      ctx.lineTo(8, 0);
+      ctx.stroke();
+    } else if (sleepingOrPetting) {
       // Left Eye closed
       ctx.beginPath();
       ctx.arc(-5, -2, 3, Math.PI, 0, false); // happy curve
@@ -926,6 +974,18 @@ export class Cat {
       ctx.bezierCurveTo(-h.size/2, -h.size/2, -h.size, h.size/3, 0, h.size);
       ctx.bezierCurveTo(h.size, h.size/3, h.size/2, -h.size/2, 0, 0);
       ctx.fill();
+      ctx.restore();
+    });
+
+    // Render rising stars
+    this.stars.forEach(s => {
+      ctx.save();
+      ctx.fillStyle = `rgba(253, 203, 110, ${s.alpha})`; // warm yellow
+      ctx.translate(s.x, s.y);
+      ctx.font = `${s.size}px "Outfit", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('⭐', 0, 0);
       ctx.restore();
     });
   }

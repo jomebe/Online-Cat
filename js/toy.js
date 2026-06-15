@@ -18,7 +18,7 @@ export class Toy {
       this.height = this.radius * 2;
       this.color = options.color || '#ff4757'; // red, blue, green, orange
       this.rotation = 0;
-      this.bounce = 0.55;
+      this.bounce = 0.68;
     } else if (this.type === 'box') {
       this.width = 85;
       this.height = 55;
@@ -33,8 +33,6 @@ export class Toy {
 
   update(width, height, floorY) {
     if (this.isDragging) {
-      this.vx = 0;
-      this.vy = 0;
       return;
     }
 

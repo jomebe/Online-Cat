@@ -321,8 +321,19 @@ function handlePointerMove(e) {
 
   // 1. Dragging toy
   if (state.draggedToy) {
-    state.draggedToy.x = mx - state.dragOffset.x;
-    state.draggedToy.y = my - state.dragOffset.y;
+    const toy = state.draggedToy;
+    const nextX = mx - state.dragOffset.x;
+    const nextY = my - state.dragOffset.y;
+    
+    // Calculate throwing velocity based on pointer speed (clamped)
+    const rawVx = nextX - toy.x;
+    const rawVy = nextY - toy.y;
+    const maxVelocity = 18;
+    toy.vx = Math.max(-maxVelocity, Math.min(maxVelocity, rawVx));
+    toy.vy = Math.max(-maxVelocity, Math.min(maxVelocity, rawVy));
+
+    toy.x = nextX;
+    toy.y = nextY;
     return;
   }
 
@@ -723,6 +734,58 @@ function loop(timestamp) {
 
   // 1. Update Environment Physics
   updateEnvironment(state.canvasWidth, state.canvasHeight, state.weather);
+
+  // 1.5 Check flying yarn ball collision with cats
+  state.toys.forEach(toy => {
+    if (toy.type === 'yarn' && !toy.isDragging) {
+      const speed = Math.hypot(toy.vx, toy.vy);
+      if (speed > 2.0) { // flying fast enough
+        state.cats.forEach(cat => {
+          if (!cat.isDragging && !cat.observationMode && (!cat.hitTimer || cat.hitTimer <= 0)) {
+            const catW = cat.width * cat.scale;
+            const catH = cat.height * cat.scale;
+            
+            // Check bounding box overlap
+            const isOverlap = (
+              toy.x + toy.radius >= cat.x - catW / 2 &&
+              toy.x - toy.radius <= cat.x + catW / 2 &&
+              toy.y + toy.radius >= cat.y - catH &&
+              toy.y - toy.radius <= cat.y
+            );
+            
+            if (isOverlap) {
+              // Bounce the yarn ball back and slow it down
+              toy.vx = -toy.vx * 0.25;
+              toy.vy = -toy.vy * 0.25;
+              
+              // Trigger hit state on cat
+              cat.hitTimer = 0.8; // 0.8 seconds of hit squint & rapid bobbing
+              cat.state = 'idle';
+              cat.stateTimer = 1.0;
+              cat.leaveBox(); // climb out of box if inside
+              
+              // Surprised meow sound
+              playMeow(cat.breed === 'siamese' ? 'low' : 'happy');
+              
+              // Spawn star particles
+              for (let i = 0; i < 4; i++) {
+                cat.stars.push({
+                  x: cat.x + (Math.random() * 20 - 10),
+                  y: cat.y - cat.height * cat.scale - 12,
+                  alpha: 1.0,
+                  size: 11 + Math.random() * 6,
+                  speed: 1.0 + Math.random() * 1.0
+                });
+              }
+              
+              // Activity log
+              addLog(`💥 <strong>${cat.name}</strong>(이)가 날아온 털뭉치에 맞고 깜짝 놀랐습니다!`);
+            }
+          }
+        });
+      }
+    }
+  });
 
   // 2. Draw Environment Background
   drawBackground(ctx, state.canvasWidth, state.canvasHeight, state.weather);
