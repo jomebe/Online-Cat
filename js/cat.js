@@ -1,0 +1,819 @@
+// js/cat.js
+import { playMeow, startPurr, stopPurr } from './audio.js';
+
+export class Cat {
+  constructor(name, breed, options = {}) {
+    this.id = 'cat_' + Math.random().toString(36).substr(2, 9);
+    this.name = name || 'Nabi';
+    this.breed = breed || 'tabby'; // tabby, tuxedo, calico, siamese, black, white, ginger, grey
+    this.accessories = options.accessories || []; // 'collar', 'ribbon', 'hat', 'glasses'
+    this.gender = options.gender || (Math.random() > 0.5 ? 'male' : 'female');
+
+    // Position & Physics
+    this.x = options.x || 100 + Math.random() * 400;
+    this.y = 0; // calculated based on floor
+    this.vx = 0;
+    this.vy = 0;
+    this.width = 65;
+    this.height = 42;
+    this.scale = 1.0;
+
+    // Stats (0 to 100)
+    this.affection = options.affection || 50;
+    this.hunger = options.hunger || 30; // 0 = full, 100 = starving
+    this.energy = options.energy || 70 + Math.random() * 30; // 0 = exhausted, 100 = energetic
+
+    // AI & States
+    // States: 'idle', 'walk', 'sit', 'sleep', 'play', 'eat', 'pet'
+    this.state = 'idle';
+    this.direction = Math.random() > 0.5 ? 1 : -1; // 1 = right, -1 = left
+    this.stateTimer = 2 + Math.random() * 4; // seconds in current state
+    this.targetX = this.x;
+    this.targetToy = null;
+    this.inBox = null; // Reference to a box toy they are occupying
+
+    // Animation variables
+    this.animTime = Math.random() * 100;
+    this.legCycle = 0;
+    this.tailWag = 0;
+    this.earWiggle = 0;
+    this.isSleeping = false;
+    this.isBeingPet = false;
+    this.hearts = []; // list of rising hearts [{x, y, alpha, size, speed}]
+
+    // Specific breed colors
+    this.colors = this.getBreedColors();
+  }
+
+  // Get color schemes based on breed
+  getBreedColors() {
+    switch (this.breed) {
+      case 'tuxedo':
+        return { body: '#2f3542', chest: '#ffffff', paws: '#ffffff', eyes: '#7bed9f', stripes: null, nose: '#ffb8b8' };
+      case 'calico':
+        return { body: '#ffffff', orangePatches: '#f0932b', blackPatches: '#2f3542', eyes: '#f9ca24', nose: '#ffb8b8' };
+      case 'siamese':
+        return { body: '#f1f2f6', points: '#57606f', eyes: '#70a1ff', nose: '#2f3542' }; // points = face, ears, tail, paws
+      case 'ginger':
+        return { body: '#ff9f43', stripes: '#ee5253', chest: '#fff2e6', paws: '#fff2e6', eyes: '#2ed573', nose: '#ffb8b8' };
+      case 'black':
+        return { body: '#2f3542', eyes: '#ffa502', nose: '#2f3542' };
+      case 'white':
+        return { body: '#ffffff', eyes: '#70a1ff', nose: '#ffb8b8' };
+      case 'grey':
+        return { body: '#a4b0be', chest: '#ced6e0', stripes: '#747d8c', eyes: '#ffa502', nose: '#ffb8b8' };
+      case 'tabby':
+      default:
+        return { body: '#ced6e0', stripes: '#747d8c', chest: '#f1f2f6', eyes: '#2ed573', nose: '#ffb8b8' };
+    }
+  }
+
+  update(width, height, floorY, toys, laser, delta) {
+    this.animTime += delta;
+
+    // Stat changes over time
+    this.hunger = Math.min(100, this.hunger + delta * 0.4); // hunger increases
+    this.energy = Math.max(0, this.energy - (this.state === 'sleep' ? -delta * 4.5 : delta * 0.25)); // energy drains (restores during sleep)
+    this.affection = Math.max(0, this.affection - delta * 0.1); // affection slowly decays
+
+    // Update floating petting hearts
+    this.hearts.forEach((h, idx) => {
+      h.y -= h.speed;
+      h.x += Math.sin(h.y * 0.05) * 0.5;
+      h.alpha -= delta * 0.8;
+      if (h.alpha <= 0) {
+        this.hearts.splice(idx, 1);
+      }
+    });
+
+    // Handle petting state
+    if (this.isBeingPet) {
+      this.state = 'pet';
+      this.vx = 0;
+      this.inBox = null;
+      if (Math.random() < 0.08) {
+        this.hearts.push({
+          x: this.x + (Math.random() * 40 - 20),
+          y: this.y - this.height - 10,
+          alpha: 1.0,
+          size: 6 + Math.random() * 6,
+          speed: 1 + Math.random() * 1
+        });
+      }
+      return; // Freeze AI while petting
+    }
+
+    // Set height based on floor level (or box)
+    const baseFloorY = floorY - 5;
+    if (this.inBox) {
+      this.y = this.inBox.y + 10;
+      this.x = this.inBox.x;
+    } else {
+      this.y = baseFloorY;
+    }
+
+    // Check Laser Pointer (takes top priority if cat is awake)
+    if (laser.active && this.state !== 'sleep') {
+      this.inBox = null; // get out of box to play!
+      this.state = 'play';
+      this.targetToy = null;
+      this.targetX = laser.x;
+      this.direction = this.targetX > this.x ? 1 : -1;
+      
+      // Run towards laser
+      const speed = 2.8;
+      const dist = Math.abs(this.x - laser.x);
+      if (dist > 15) {
+        this.vx = this.direction * speed;
+      } else {
+        this.vx = 0;
+        // Pounce/pat animation triggers meow occasionally
+        if (Math.random() < 0.02) {
+          playMeow(this.breed === 'siamese' ? 'low' : 'happy');
+        }
+      }
+      return;
+    }
+
+    // AI Logic
+    this.stateTimer -= delta;
+
+    // State Transitions
+    if (this.stateTimer <= 0) {
+      this.chooseNewState(toys, width);
+    }
+
+    // AI Actions
+    switch (this.state) {
+      case 'idle':
+        this.vx = 0;
+        break;
+
+      case 'walk':
+        const walkSpeed = 0.85;
+        const distToTarget = Math.abs(this.x - this.targetX);
+        if (distToTarget > 10) {
+          this.direction = this.targetX > this.x ? 1 : -1;
+          this.vx = this.direction * walkSpeed;
+          this.x += this.vx;
+        } else {
+          this.vx = 0;
+          this.state = 'idle';
+          this.stateTimer = 1 + Math.random() * 3;
+        }
+        break;
+
+      case 'sleep':
+        this.vx = 0;
+        if (this.energy > 95) {
+          this.state = 'idle';
+          this.stateTimer = 2;
+          playMeow('happy');
+        }
+        break;
+
+      case 'sit':
+        this.vx = 0;
+        break;
+
+      case 'eat':
+        // Head towards a fish treat
+        if (!this.targetToy || this.targetToy.bites <= 0 || !toys.includes(this.targetToy)) {
+          this.state = 'idle';
+          this.stateTimer = 1;
+          this.targetToy = null;
+          break;
+        }
+
+        const runSpeed = 2.2;
+        const distToFood = Math.abs(this.x - this.targetToy.x);
+        this.direction = this.targetToy.x > this.x ? 1 : -1;
+
+        if (distToFood > 25) {
+          this.vx = this.direction * runSpeed;
+          this.x += this.vx;
+        } else {
+          // Eat the food
+          this.vx = 0;
+          this.targetToy.bites -= 1;
+          this.hunger = Math.max(0, this.hunger - 35);
+          this.energy = Math.min(100, this.energy + 10);
+          
+          playMeow('happy');
+
+          if (this.targetToy.bites <= 0) {
+            const foodIdx = toys.indexOf(this.targetToy);
+            if (foodIdx > -1) toys.splice(foodIdx, 1);
+            this.state = 'idle';
+            this.stateTimer = 2;
+            this.targetToy = null;
+          } else {
+            this.stateTimer = 1.2; // keep eating next bite
+          }
+        }
+        break;
+
+      case 'play':
+        // Head towards a yarn ball
+        if (!this.targetToy || !toys.includes(this.targetToy)) {
+          this.state = 'idle';
+          this.stateTimer = 1;
+          this.targetToy = null;
+          break;
+        }
+
+        const playRunSpeed = 2.0;
+        const distToYarn = Math.abs(this.x - this.targetToy.x);
+        this.direction = this.targetToy.x > this.x ? 1 : -1;
+
+        if (distToYarn > 30) {
+          this.vx = this.direction * playRunSpeed;
+          this.x += this.vx;
+        } else {
+          // Play with the yarn (kick/bat it)
+          this.vx = 0;
+          this.targetToy.vx = this.direction * (4 + Math.random() * 4);
+          this.targetToy.vy = -2 - Math.random() * 3;
+          this.energy = Math.max(10, this.energy - 8);
+          this.affection = Math.min(100, this.affection + 5);
+
+          if (Math.random() < 0.3) {
+            playMeow('kitten');
+          }
+
+          this.state = 'idle';
+          this.stateTimer = 1.5 + Math.random() * 2;
+          this.targetToy = null;
+        }
+        break;
+    }
+
+    // Keep cat on screen
+    if (this.x < 30) {
+      this.x = 30;
+      this.vx = 0;
+      if (this.state === 'walk') this.state = 'idle';
+    } else if (this.x > width - 30) {
+      this.x = width - 30;
+      this.vx = 0;
+      if (this.state === 'walk') this.state = 'idle';
+    }
+  }
+
+  // Choose a new state based on stats and environment
+  chooseNewState(toys, canvasWidth) {
+    // 1. Check hunger
+    if (this.hunger > 60) {
+      const food = toys.find(t => t.type === 'treat' && t.bites > 0 && !t.isDragging);
+      if (food) {
+        this.state = 'eat';
+        this.targetToy = food;
+        this.stateTimer = 10;
+        return;
+      }
+    }
+
+    // 2. Check energy (sleepy)
+    if (this.energy < 20) {
+      // Find an unoccupied cardboard box
+      const box = toys.find(t => t.type === 'box' && !t.isDragging && !t.claimedBy);
+      if (box && !this.inBox) {
+        this.inBox = box;
+        box.claimedBy = this.id;
+        this.state = 'sleep';
+        this.stateTimer = 15 + Math.random() * 10;
+        return;
+      } else {
+        // Just curl up on the floor/rug
+        this.state = 'sleep';
+        this.stateTimer = 12 + Math.random() * 8;
+        return;
+      }
+    }
+
+    // 3. Play if energized and yarn exists
+    if (this.energy > 40 && Math.random() < 0.5) {
+      const yarn = toys.find(t => t.type === 'yarn' && !t.isDragging);
+      if (yarn) {
+        this.state = 'play';
+        this.targetToy = yarn;
+        this.stateTimer = 8;
+        return;
+      }
+    }
+
+    // 4. Default behaviors
+    const roll = Math.random();
+    if (roll < 0.4) {
+      // Walk somewhere
+      this.state = 'walk';
+      this.targetX = 50 + Math.random() * (canvasWidth - 100);
+      this.stateTimer = 6;
+      this.inBox = null; // leaves box
+    } else if (roll < 0.75) {
+      // Sit
+      this.state = 'sit';
+      this.stateTimer = 2 + Math.random() * 4;
+    } else {
+      // Idle
+      this.state = 'idle';
+      this.stateTimer = 1 + Math.random() * 3;
+    }
+  }
+
+  // Draw the cat procedurally
+  draw(ctx) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.scale(this.direction * this.scale, this.scale); // flip based on direction
+
+    // Determine key rotation/translation based on states
+    let bodyYOffset = 0;
+    let headXOffset = 22;
+    let headYOffset = -18;
+    let headRotation = 0;
+    let tailAngle = 0;
+    let legsDrawn = true;
+    let sleepPose = false;
+
+    // Apply animation cycles
+    if (this.state === 'walk' || this.state === 'play' || this.state === 'eat') {
+      bodyYOffset = Math.sin(this.animTime * 11) * 1.5;
+      headYOffset = -18 + Math.sin(this.animTime * 11) * 0.8;
+      tailAngle = Math.sin(this.animTime * 6) * 0.25;
+    } else if (this.state === 'idle') {
+      bodyYOffset = Math.sin(this.animTime * 2.2) * 0.5; // breathing
+      tailAngle = Math.sin(this.animTime * 1.5) * 0.15;
+    } else if (this.state === 'pet') {
+      bodyYOffset = 1.5 + Math.sin(this.animTime * 4.5) * 0.3; // purr vibrate
+      headYOffset = -15; // tilted down slightly for petting
+      headRotation = 0.05;
+      tailAngle = Math.sin(this.animTime * 14) * 0.35; // happy tail wag
+    } else if (this.state === 'sleep' || this.state === 'sit') {
+      sleepPose = true;
+      legsDrawn = false;
+      bodyYOffset = 5 + Math.sin(this.animTime * 1.5) * 0.5; // lowered, slow breathing
+      headXOffset = 15;
+      headYOffset = -10;
+      tailAngle = -Math.PI * 0.7 + Math.sin(this.animTime * 0.8) * 0.05; // curled
+    }
+
+    // 1. Draw Tail (drawn behind body)
+    ctx.save();
+    ctx.translate(-24, -8 + bodyYOffset);
+    ctx.rotate(tailAngle);
+    
+    // Tail Shadow
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+    ctx.lineWidth = 9.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(0, 5);
+    ctx.quadraticCurveTo(-15, -15, -10, -32);
+    ctx.stroke();
+
+    // Tail fill
+    ctx.strokeStyle = this.breed === 'siamese' ? this.colors.points : this.colors.body;
+    ctx.lineWidth = 7.5;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(-15, -20, -10, -35);
+    ctx.stroke();
+    
+    // Calico tail patches
+    if (this.breed === 'calico') {
+      ctx.strokeStyle = this.colors.orangePatches;
+      ctx.lineWidth = 7.5;
+      ctx.setLineDash([8, 12]);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(-15, -20, -10, -35);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.restore();
+
+    // 2. Draw Legs (if standing/walking)
+    if (legsDrawn) {
+      const legW = 6;
+      const legH = 14;
+      const legSpread = 12;
+      const cycle = this.animTime * 11;
+      
+      const frontLegSwing = Math.sin(cycle) * 7;
+      const backLegSwing = -Math.sin(cycle) * 7;
+
+      ctx.fillStyle = this.breed === 'siamese' ? this.colors.points : this.colors.body;
+
+      // Back Leg 1
+      ctx.save();
+      ctx.translate(-16, 2);
+      ctx.rotate(backLegSwing * Math.PI / 180);
+      ctx.fillRect(-legW/2, 0, legW, legH);
+      // Paws (white socks for tuxedo/tabby)
+      if (this.colors.paws) {
+        ctx.fillStyle = this.colors.paws;
+        ctx.fillRect(-legW/2, legH - 3, legW, 4.5);
+      }
+      ctx.restore();
+
+      // Back Leg 2
+      ctx.save();
+      ctx.translate(-8, 2);
+      ctx.rotate(-backLegSwing * Math.PI / 180);
+      ctx.fillRect(-legW/2, 0, legW, legH);
+      if (this.colors.paws) {
+        ctx.fillStyle = this.colors.paws;
+        ctx.fillRect(-legW/2, legH - 3, legW, 4.5);
+      }
+      ctx.restore();
+
+      // Front Leg 1
+      ctx.save();
+      ctx.translate(10, 2);
+      ctx.rotate(frontLegSwing * Math.PI / 180);
+      ctx.fillRect(-legW/2, 0, legW, legH);
+      if (this.colors.paws) {
+        ctx.fillStyle = this.colors.paws;
+        ctx.fillRect(-legW/2, legH - 3, legW, 4.5);
+      }
+      ctx.restore();
+
+      // Front Leg 2
+      ctx.fillStyle = this.breed === 'siamese' ? this.colors.points : this.colors.body;
+      ctx.save();
+      ctx.translate(18, 2);
+      ctx.rotate(-frontLegSwing * Math.PI / 180);
+      ctx.fillRect(-legW/2, 0, legW, legH);
+      if (this.colors.paws) {
+        ctx.fillStyle = this.colors.paws;
+        ctx.fillRect(-legW/2, legH - 3, legW, 4.5);
+      }
+      ctx.restore();
+    }
+
+    // 3. Draw Body
+    ctx.save();
+    ctx.translate(0, bodyYOffset);
+
+    // Body shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    ctx.beginPath();
+    ctx.ellipse(0, 6, 28, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Body fill
+    ctx.fillStyle = this.colors.body;
+    ctx.beginPath();
+    if (sleepPose) {
+      // Sleeps curled up: wider, flatter oval
+      ctx.ellipse(0, 0, 26, 12, 0, 0, Math.PI * 2);
+    } else {
+      ctx.ellipse(0, -2, 27, 13, 0, 0, Math.PI * 2);
+    }
+    ctx.fill();
+
+    // Draw Tabby/Grey stripes on body
+    if (this.colors.stripes) {
+      ctx.fillStyle = this.colors.stripes;
+      ctx.beginPath();
+      // Draw 3 stripes on back
+      ctx.fillRect(-12, -14, 3, 6);
+      ctx.fillRect(-4, -15, 3.5, 7);
+      ctx.fillRect(4, -14, 3, 6);
+    }
+
+    // Draw Calico patches
+    if (this.breed === 'calico') {
+      ctx.fillStyle = this.colors.orangePatches;
+      ctx.beginPath();
+      ctx.arc(-10, -7, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = this.colors.blackPatches;
+      ctx.beginPath();
+      ctx.arc(8, -8, 8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Draw Tuxedo white chest
+    if (this.colors.chest) {
+      ctx.fillStyle = this.colors.chest;
+      ctx.beginPath();
+      ctx.ellipse(14, -4, 9, 10, -0.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // 4. Draw Head
+    ctx.save();
+    ctx.translate(headXOffset, headYOffset + bodyYOffset);
+    ctx.rotate(headRotation);
+
+    // Head Base
+    ctx.fillStyle = this.colors.body;
+    ctx.beginPath();
+    ctx.arc(0, 0, 16, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Siamese face mask
+    if (this.breed === 'siamese') {
+      ctx.fillStyle = this.colors.points;
+      ctx.beginPath();
+      ctx.ellipse(2, 2, 11, 9, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Grey / Tabby forehead stripes
+    if (this.colors.stripes) {
+      ctx.fillStyle = this.colors.stripes;
+      ctx.fillRect(-3, -16, 2, 5);
+      ctx.fillRect(1, -16, 2, 5);
+    }
+
+    // Calico face patch
+    if (this.breed === 'calico') {
+      ctx.fillStyle = this.colors.orangePatches;
+      ctx.beginPath();
+      ctx.arc(-8, -6, 8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Draw Ears
+    const isFolded = this.breed === 'scottish'; // Scottish Fold ear style
+    ctx.fillStyle = this.breed === 'siamese' ? this.colors.points : this.colors.body;
+    
+    // Left Ear
+    ctx.beginPath();
+    if (isFolded) {
+      ctx.moveTo(-13, -8);
+      ctx.quadraticCurveTo(-14, -13, -9, -13);
+      ctx.lineTo(-4, -14);
+    } else {
+      ctx.moveTo(-13, -7);
+      ctx.lineTo(-14, -20);
+      ctx.lineTo(-4, -13);
+    }
+    ctx.fill();
+    // Inner left ear (pink)
+    ctx.fillStyle = '#ffc0cb';
+    ctx.beginPath();
+    if (!isFolded) {
+      ctx.moveTo(-11, -8);
+      ctx.lineTo(-12, -17);
+      ctx.lineTo(-6, -12);
+      ctx.fill();
+    }
+
+    // Right Ear
+    ctx.fillStyle = this.breed === 'siamese' ? this.colors.points : this.colors.body;
+    ctx.beginPath();
+    if (isFolded) {
+      ctx.moveTo(3, -14);
+      ctx.quadraticCurveTo(8, -13, 8, -8);
+      ctx.lineTo(13, -7);
+    } else {
+      ctx.moveTo(3, -13);
+      ctx.lineTo(10, -21);
+      ctx.lineTo(12, -8);
+    }
+    ctx.fill();
+    // Inner right ear (pink)
+    ctx.fillStyle = '#ffc0cb';
+    ctx.beginPath();
+    if (!isFolded) {
+      ctx.moveTo(5, -12);
+      ctx.lineTo(8, -18);
+      ctx.lineTo(10, -9);
+      ctx.fill();
+    }
+
+    // Draw Eyes (happy arcs for sleep/petting, open circles otherwise)
+    const sleepingOrPetting = this.state === 'sleep' || this.state === 'pet';
+    ctx.strokeStyle = '#2f3542';
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = 'round';
+
+    if (sleepingOrPetting) {
+      // Left Eye closed
+      ctx.beginPath();
+      ctx.arc(-5, -2, 3, Math.PI, 0, false); // happy curve
+      ctx.stroke();
+
+      // Right Eye closed
+      ctx.beginPath();
+      ctx.arc(5, -2, 3, Math.PI, 0, false);
+      ctx.stroke();
+    } else {
+      // Open Eyes
+      ctx.fillStyle = this.colors.eyes;
+      ctx.beginPath();
+      ctx.arc(-5, -2, 4, 0, Math.PI * 2);
+      ctx.arc(5, -2, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Pupils (slit for cat eyes)
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(-5.5, -5, 1, 6);
+      ctx.fillRect(4.5, -5, 1, 6);
+    }
+
+    // Draw Nose & Mouth
+    ctx.fillStyle = this.colors.nose;
+    ctx.beginPath();
+    ctx.moveTo(-1.5, 2);
+    ctx.lineTo(1.5, 2);
+    ctx.lineTo(0, 3.5);
+    ctx.closePath();
+    ctx.fill();
+
+    // Mouth lines
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(0, 3.5);
+    ctx.quadraticCurveTo(-1.5, 5.5, -3, 4);
+    ctx.moveTo(0, 3.5);
+    ctx.quadraticCurveTo(1.5, 5.5, 3, 4);
+    ctx.stroke();
+
+    // Draw Whiskers
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
+    ctx.lineWidth = 1;
+    // Left whiskers
+    ctx.beginPath();
+    ctx.moveTo(-11, 2); ctx.lineTo(-24, 0);
+    ctx.moveTo(-12, 3.5); ctx.lineTo(-25, 4);
+    ctx.moveTo(-11, 5); ctx.lineTo(-22, 8);
+    // Right whiskers
+    ctx.moveTo(11, 2); ctx.lineTo(24, 0);
+    ctx.moveTo(12, 3.5); ctx.lineTo(25, 4);
+    ctx.moveTo(11, 5); ctx.lineTo(22, 8);
+    ctx.stroke();
+
+    // 5. Draw Accessories
+    this.accessories.forEach(acc => {
+      if (acc === 'collar') {
+        // Red collar around neck
+        ctx.strokeStyle = '#e84118';
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.ellipse(0, 11, 10, 4, 0.1, 0.2, Math.PI * 0.8);
+        ctx.stroke();
+
+        // Golden bell
+        ctx.fillStyle = '#fbc531';
+        ctx.beginPath();
+        ctx.arc(3, 15, 3, 0, Math.PI * 2);
+        ctx.fill();
+        
+      } else if (acc === 'ribbon') {
+        // Cute red bow under head
+        ctx.fillStyle = '#ff4757';
+        ctx.beginPath();
+        // Left loop
+        ctx.moveTo(0, 12);
+        ctx.lineTo(-8, 7);
+        ctx.lineTo(-8, 17);
+        ctx.closePath();
+        // Right loop
+        ctx.moveTo(0, 12);
+        ctx.lineTo(8, 7);
+        ctx.lineTo(8, 17);
+        ctx.closePath();
+        ctx.fill();
+
+        // Center knot
+        ctx.fillStyle = '#ff6b81';
+        ctx.beginPath();
+        ctx.arc(0, 12, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+
+      } else if (acc === 'hat') {
+        // Cute Wizard hat on top of head
+        ctx.save();
+        ctx.translate(0, -14);
+        ctx.rotate(-0.06);
+
+        // Hat Brim
+        ctx.fillStyle = '#3f313a'; // dark purple
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 14, 3.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Hat Cone
+        ctx.fillStyle = '#4834d4'; // deep purple blue
+        ctx.beginPath();
+        ctx.moveTo(-8, -1);
+        ctx.quadraticCurveTo(-1, -12, -2, -26); // curved tip
+        ctx.lineTo(5, -1);
+        ctx.closePath();
+        ctx.fill();
+
+        // Tiny gold star/circle on hat
+        ctx.fillStyle = '#f9ca24';
+        ctx.beginPath();
+        ctx.arc(-1, -12, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+
+      } else if (acc === 'glasses') {
+        // Heart glasses
+        ctx.strokeStyle = '#ff4757';
+        ctx.fillStyle = 'rgba(255, 71, 87, 0.15)';
+        ctx.lineWidth = 2;
+
+        // Left heart lens
+        ctx.beginPath();
+        ctx.moveTo(-9, -5);
+        ctx.bezierCurveTo(-12, -8, -12, -2, -9, 0);
+        ctx.bezierCurveTo(-6, -2, -6, -8, -9, -5);
+        ctx.stroke();
+        ctx.fill();
+
+        // Right heart lens
+        ctx.beginPath();
+        ctx.moveTo(1, -5);
+        ctx.bezierCurveTo(-2, -8, -2, -2, 1, 0);
+        ctx.bezierCurveTo(4, -2, 4, -8, 1, -5);
+        ctx.stroke();
+        ctx.fill();
+
+        // Bridge line
+        ctx.beginPath();
+        ctx.moveTo(-6, -3);
+        ctx.lineTo(0, -3);
+        ctx.stroke();
+      }
+    });
+
+    ctx.restore(); // end Head
+
+    // Draw Names (above head)
+    ctx.restore(); // end Translate to Cat X, Y
+    
+    // Draw Name text overlay
+    ctx.save();
+    ctx.fillStyle = '#2f3542';
+    ctx.font = '500 12px "Outfit", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(255,255,255,0.85)';
+    ctx.shadowBlur = 4;
+    
+    // Render Stats or State icon above name if being pet
+    let displayName = this.name;
+    if (this.state === 'sleep') displayName = '💤 ' + this.name;
+    else if (this.state === 'eat') displayName = '🍲 ' + this.name;
+    else if (this.state === 'play') displayName = '🎾 ' + this.name;
+
+    ctx.fillText(displayName, this.x, this.y - this.height - 24);
+    ctx.restore();
+
+    // Render rising hearts
+    this.hearts.forEach(h => {
+      ctx.save();
+      ctx.fillStyle = `rgba(255, 107, 129, ${h.alpha})`;
+      ctx.translate(h.x, h.y);
+      // Draw small heart shape
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.bezierCurveTo(-h.size/2, -h.size/2, -h.size, h.size/3, 0, h.size);
+      ctx.bezierCurveTo(h.size, h.size/3, h.size/2, -h.size/2, 0, 0);
+      ctx.fill();
+      ctx.restore();
+    });
+  }
+
+  // Check if click coordinates hit the cat body bounds
+  isClicked(mx, my) {
+    const rx = this.x - this.width / 2;
+    const ry = this.y - this.height - 10;
+    return (
+      mx >= rx &&
+      mx <= rx + this.width &&
+      my >= ry &&
+      my <= ry + this.height + 15
+    );
+  }
+
+  // Pet the cat
+  startPetting() {
+    if (!this.isBeingPet) {
+      this.isBeingPet = true;
+      this.state = 'pet';
+      startPurr();
+      // Increase stats on petting
+      this.affection = Math.min(100, this.affection + 25);
+      this.energy = Math.min(100, this.energy + 2);
+    }
+  }
+
+  stopPetting() {
+    if (this.isBeingPet) {
+      this.isBeingPet = false;
+      stopPurr();
+      this.state = 'idle';
+      this.stateTimer = 1.5;
+    }
+  }
+}

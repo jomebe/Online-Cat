@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>온라인 고양이 힐링 Sanctuary | Online Cat</title>
+  <meta name="description" content="나만의 고양이를 입양하고, 만져주고, 장난감으로 함께 놀아주며 힐링하는 온라인 고양이 방입니다.">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="app-container">
+    <!-- Main rendering canvas -->
+    <canvas id="main-canvas"></canvas>
+
+    <!-- Guide hint -->
+    <div id="pet-indicator" class="pet-indicator">🐾 마우스로 고양이를 쓰다듬어(Pet) 보세요!</div>
+
+    <!-- Header Section -->
+    <header class="glass-panel">
+      <div class="logo-section">
+        <span class="cat-icon">🐈</span>
+        <h1>Online Cat</h1>
+      </div>
+      <div class="top-controls">
+        <button id="settings-btn" class="icon-btn" title="환경 설정">⚙️</button>
+        <button id="mute-btn" class="icon-btn" title="소리 켜기/끄기">🔊</button>
+        <button id="toggle-creator-btn" class="icon-btn" title="고양이 만들기">➕</button>
+      </div>
+    </header>
+
+    <!-- Environmental Settings Modal -->
+    <div id="settings-panel" class="settings-panel glass-panel hidden">
+      <h3>🌸 환경 설정</h3>
+      <div class="settings-group">
+        <label>시간대 설정 (배경 테마)</label>
+        <div class="btn-row" id="time-btns">
+          <button data-time="morning">아침</button>
+          <button data-time="afternoon" class="active">낮</button>
+          <button data-time="evening">저녁</button>
+          <button data-time="night">밤</button>
+        </div>
+      </div>
+      <div class="settings-group">
+        <label>날씨 및 배경 효과</label>
+        <div class="btn-row" id="weather-btns">
+          <button data-weather="calm" class="active">평온함</button>
+          <button data-weather="sakura">벚꽃 비</button>
+          <button data-weather="rain">빗소리</button>
+        </div>
+      </div>
+      <div class="settings-group">
+        <label>배경 음량 조절</label>
+        <div style="display:flex; align-items:center; gap: 10px;">
+          <span style="font-size:12px;">🔈</span>
+          <input type="range" id="volume-slider" min="0" max="0.5" step="0.05" value="0.15" style="flex:1; accent-color:var(--primary); cursor:pointer;">
+          <span style="font-size:12px;">🔊</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cat Details Card (Shows when a cat is clicked) -->
+    <div id="cat-details-card" class="cat-details-card glass-panel hidden">
+      <div class="card-header">
+        <h3 id="detail-name">고양이 이름</h3>
+        <button id="close-card-btn" class="close-card-btn">✕</button>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-size:13px; opacity:0.8; margin-top:-5px;">
+        <span id="detail-breed">종류: 치즈태비</span>
+        <span id="detail-gender">성별: ♀</span>
+      </div>
+      <div class="stat-bars">
+        <div class="stat-bar-group">
+          <div class="stat-label">
+            <span>❤️ 애정수치 (Affection)</span>
+            <span id="label-affection">80%</span>
+          </div>
+          <div class="progress-track">
+            <div id="bar-affection" class="progress-fill affection" style="width: 80%;"></div>
+          </div>
+        </div>
+        <div class="stat-bar-group">
+          <div class="stat-label">
+            <span>⚡ 활력수치 (Energy)</span>
+            <span id="label-energy">50%</span>
+          </div>
+          <div class="progress-track">
+            <div id="bar-energy" class="progress-fill energy" style="width: 50%;"></div>
+          </div>
+        </div>
+        <div class="stat-bar-group">
+          <div class="stat-label">
+            <span>🍲 포만감 (Starving)</span>
+            <span id="label-hunger">30%</span>
+          </div>
+          <div class="progress-track">
+            <div id="bar-hunger" class="progress-fill hunger" style="width: 30%;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-actions">
+        <button id="rename-btn">✏️ 이름 변경</button>
+        <button id="release-btn" class="release-btn">👋 입양 보내기</button>
+      </div>
+    </div>
+
+    <!-- Cat Creator Drawer -->
+    <div id="sidebar" class="sidebar glass-panel">
+      <h2>🐱 고양이 만들기</h2>
+      <p style="font-size:13px; opacity:0.8; margin-top:-10px; margin-bottom:10px;">나만의 귀여운 단짝을 만들어보세요.</p>
+      
+      <div class="form-group">
+        <label for="cat-name-input">고양이 이름</label>
+        <input type="text" id="cat-name-input" placeholder="고양이 이름을 적어주세요..." maxlength="8">
+      </div>
+
+      <div class="form-group">
+        <label>묘종 선택</label>
+        <div class="selection-grid" id="breed-selector">
+          <div class="grid-item selected" data-breed="tabby">
+            <span class="emoji">🦭</span>
+            <span>태비</span>
+          </div>
+          <div class="grid-item" data-breed="tuxedo">
+            <span class="emoji">🐧</span>
+            <span>턱시도</span>
+          </div>
+          <div class="grid-item" data-breed="calico">
+            <span class="emoji">🐹</span>
+            <span>삼색이</span>
+          </div>
+          <div class="grid-item" data-breed="siamese">
+            <span class="emoji">🦊</span>
+            <span>샴</span>
+          </div>
+          <div class="grid-item" data-breed="ginger">
+            <span class="emoji">🦁</span>
+            <span>치즈</span>
+          </div>
+          <div class="grid-item" data-breed="black">
+            <span class="emoji">🐈‍⬛</span>
+            <span>올블랙</span>
+          </div>
+          <div class="grid-item" data-breed="white">
+            <span class="emoji">🐈</span>
+            <span>하양이</span>
+          </div>
+          <div class="grid-item" data-breed="grey">
+            <span class="emoji">🐨</span>
+            <span>러시안블루</span>
+          </div>
+          <div class="grid-item" data-breed="scottish">
+            <span class="emoji">🦉</span>
+            <span>폴드</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>악세서리 장착</label>
+        <div class="selection-grid" id="accessory-selector">
+          <div class="grid-item" data-acc="collar">
+            <span class="emoji">🔔</span>
+            <span>목방울</span>
+          </div>
+          <div class="grid-item" data-acc="ribbon">
+            <span class="emoji">🎀</span>
+            <span>리본</span>
+          </div>
+          <div class="grid-item" data-acc="hat">
+            <span class="emoji">🧙</span>
+            <span>꼬깔모자</span>
+          </div>
+          <div class="grid-item" data-acc="glasses">
+            <span class="emoji">🕶️</span>
+            <span>선글라스</span>
+          </div>
+        </div>
+      </div>
+
+      <button id="create-cat-btn" class="primary-btn">새로운 고양이 입양하기 ✨</button>
+    </div>
+
+    <!-- Activity Log Panel -->
+    <div id="activity-log" class="activity-log glass-panel">
+      <h3>🐾 실시간 로그</h3>
+      <div id="log-content" class="log-content">
+        <div class="log-entry">온라인 고양이 안식처에 오신 것을 환영합니다!</div>
+      </div>
+    </div>
+
+    <!-- Toy & Food Drawer (Bottom Right) -->
+    <div id="toy-box" class="toy-box glass-panel">
+      <div class="toy-item" id="toy-laser" title="레이저 포인터: 마우스 빨간 점을 고양이가 쫓아다닙니다.">
+        <span class="toy-icon">🔦</span>
+        <span class="toy-name">레이저</span>
+      </div>
+      <div class="toy-item" id="toy-yarn" draggable="true" title="털실 뭉치: 드래그해서 바닥에 놓아보세요.">
+        <span class="toy-icon">🧶</span>
+        <span class="toy-name">털실뭉치</span>
+      </div>
+      <div class="toy-item" id="toy-box-item" draggable="true" title="상자: 드래그해서 바닥에 놓으면 고양이가 들어가서 낮잠을 잡니다.">
+        <span class="toy-icon">📦</span>
+        <span class="toy-name">골판지상자</span>
+      </div>
+      <div class="toy-item" id="toy-treat" draggable="true" title="생선 과자: 맛있는 간식을 드래그해서 먹이세요.">
+        <span class="toy-icon">🐟</span>
+        <span class="toy-name">물고기간식</span>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
