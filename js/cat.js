@@ -1,6 +1,6 @@
 // js/cat.js
 import { playMeow, startPurr, stopPurr } from './audio.js';
-import { getSprite, getFrameForState } from './spriteLoader.js';
+import { getSprite } from './spriteLoader.js';
 
 export class Cat {
   constructor(name, breed, options = {}) {
@@ -483,32 +483,49 @@ export class Cat {
     }
   }
 
-  // Draw the cat using sprites
+  // Draw the cat using animated sprites
   draw(ctx) {
     // Lazy-load sprite frames if not yet set
     if (!this.spriteFrames) {
       this.spriteFrames = getSprite(this.breed);
     }
 
-    // Determine which frame to use based on current state
+    // Determine which animation to use based on current state
     let frameKey = 'idle';
-    if (this.state === 'walk' || this.state === 'eat') frameKey = 'walk';
-    else if (this.state === 'sleep') frameKey = 'sleep';
-    else if (this.state === 'play') frameKey = 'play';
-    // idle, sit, pet all use idle frame
+    let animFPS = 1.5; // frames per second for cycling
 
-    const frame = this.spriteFrames ? this.spriteFrames[frameKey] : null;
+    if (this.state === 'walk') {
+      frameKey = 'walk'; animFPS = 6;
+    } else if (this.state === 'eat') {
+      frameKey = 'eat'; animFPS = 5;
+    } else if (this.state === 'sleep') {
+      frameKey = 'sleep'; animFPS = 0.8;
+    } else if (this.state === 'play') {
+      frameKey = 'play'; animFPS = 5;
+    } else if (this.state === 'pet' || this.isBeingPet) {
+      frameKey = 'pet'; animFPS = 3;
+    } else if (this.state === 'sit') {
+      frameKey = 'idle'; animFPS = 1.2;
+    }
+    // idle uses default
 
-    // If sprites not loaded yet, draw a simple placeholder circle
-    if (!frame) {
+    // Get frame array for this state
+    const frames = this.spriteFrames ? this.spriteFrames[frameKey] : null;
+
+    if (!frames || frames.length === 0) {
+      // Placeholder while loading
       ctx.save();
-      ctx.fillStyle = '#ccc';
+      ctx.fillStyle = '#ddd';
       ctx.beginPath();
       ctx.arc(this.x, this.y - 20 * this.scale, 15 * this.scale, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
       return;
     }
+
+    // Pick current frame from the animation cycle
+    const frameIndex = Math.floor(this.animTime * animFPS) % frames.length;
+    const frame = frames[frameIndex];
 
     // Calculate animation offsets
     let bodyYOffset = 0;
@@ -518,34 +535,31 @@ export class Cat {
     let shakeX = 0;
 
     if (this.hitTimer > 0) {
-      // Hit: vibrate rapidly + squish
       shakeX = Math.sin(this.animTime * 45) * 3;
       scaleYMod = 1.0 + Math.sin(this.animTime * 30) * 0.08;
       scaleXMod = 1.0 - Math.sin(this.animTime * 30) * 0.05;
     } else if (this.isDragging) {
-      // Dragging: dangling, slight rotation
       bodyYOffset = -5;
       rotation = Math.sin(this.animTime * 2.5) * 0.06;
-    } else if (this.state === 'walk' || this.state === 'eat' || this.state === 'play') {
-      // Walking/playing: bounce
-      bodyYOffset = Math.sin(this.animTime * 11) * 2;
-    } else if (this.state === 'pet') {
-      // Petting: purr vibrate
-      bodyYOffset = Math.sin(this.animTime * 14) * 0.8;
-      scaleYMod = 1.0 + Math.sin(this.animTime * 4.5) * 0.015;
+    } else if (this.state === 'walk' || this.state === 'eat') {
+      bodyYOffset = Math.sin(this.animTime * 11) * 1.5;
+    } else if (this.state === 'play') {
+      bodyYOffset = Math.sin(this.animTime * 8) * 2.5;
+      scaleYMod = 1.0 + Math.sin(this.animTime * 8) * 0.04;
+    } else if (this.state === 'pet' || this.isBeingPet) {
+      bodyYOffset = Math.sin(this.animTime * 5) * 1.0;
+      scaleYMod = 1.0 + Math.sin(this.animTime * 4.5) * 0.02;
     } else if (this.state === 'sleep') {
-      // Sleeping: gentle breathing
-      scaleYMod = 1.0 + Math.sin(this.animTime * 1.5) * 0.025;
+      scaleYMod = 1.0 + Math.sin(this.animTime * 1.5) * 0.03;
       bodyYOffset = 2;
     } else {
       // Idle/sit: subtle breathing
-      scaleYMod = 1.0 + Math.sin(this.animTime * 2.2) * 0.015;
+      scaleYMod = 1.0 + Math.sin(this.animTime * 2.2) * 0.02;
       bodyYOffset = Math.sin(this.animTime * 2.2) * 0.8;
     }
 
-    // Calculate sprite render dimensions
-    // Normalize to consistent display size regardless of source frame size
-    const baseRenderH = 70; // base height in pixels at scale=1
+    // Sprite render dimensions
+    const baseRenderH = 70;
     const aspect = frame.width / frame.height;
     const baseRenderW = baseRenderH * aspect;
 
@@ -555,23 +569,16 @@ export class Cat {
     ctx.save();
     ctx.translate(this.x + shakeX, this.y + bodyYOffset);
     ctx.rotate(rotation);
+    ctx.scale(this.direction, 1); // flip based on direction
 
-    // Flip based on direction (sprites face right by default)
-    ctx.scale(this.direction, 1);
-
-    // Draw the sprite
-    // Anchor: bottom-center of the sprite sits at the cat's (x, y) position
     const drawX = -renderW / 2;
     const drawY = -renderH;
 
-    // Hit state: apply red tint overlay
+    // Hit state: red tint overlay
     if (this.hitTimer > 0) {
-      // Draw sprite slightly transparent
       ctx.globalAlpha = 0.7;
       ctx.drawImage(frame, drawX, drawY, renderW, renderH);
       ctx.globalAlpha = 1.0;
-      
-      // Red tint overlay using composite
       ctx.globalCompositeOperation = 'source-atop';
       ctx.fillStyle = 'rgba(255, 80, 80, 0.35)';
       ctx.fillRect(drawX, drawY, renderW, renderH);
@@ -580,7 +587,7 @@ export class Cat {
       ctx.drawImage(frame, drawX, drawY, renderW, renderH);
     }
 
-    // Draw Shadow under cat
+    // Shadow under cat
     ctx.globalAlpha = 0.12;
     ctx.fillStyle = '#000';
     ctx.beginPath();
@@ -588,12 +595,12 @@ export class Cat {
     ctx.fill();
     ctx.globalAlpha = 1.0;
 
-    // Draw Accessories (simplified overlay on top of sprite)
+    // Accessories overlay
     if (this.accessories.length > 0) {
       this.drawAccessories(ctx, renderW, renderH);
     }
 
-    ctx.restore(); // end cat transform
+    ctx.restore();
 
     // Draw Name text overlay (always in screen space, not flipped)
     ctx.save();

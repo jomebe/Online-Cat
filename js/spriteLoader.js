@@ -1,80 +1,146 @@
 // js/spriteLoader.js
-// Loads cat sprite sheets, removes white background, and extracts per-state frames.
+// Loads cat sprite sheets, removes white background via edge flood-fill,
+// and extracts per-state animation frame arrays.
 
-// Breed → sprite file mapping
+// ── Breed → sprite file mapping ──
 const BREED_SPRITE_MAP = {
-  ginger:   'assets/sprites/ginger.png',
-  grey:     'assets/sprites/grey.png',
-  tuxedo:   'assets/sprites/tuxedo.png',
-  black:    'assets/sprites/tuxedo.png',   // shares tuxedo sprite
-  white:    'assets/sprites/white.png',
-  calico:   'assets/sprites/calico.png',
-  tabby:    'assets/sprites/tabby.png',
-  scottish: 'assets/sprites/tabby.png',    // shares tabby sprite
-  siamese:  'assets/sprites/siamese.png',
+  ginger:   'ginger',
+  grey:     'grey',
+  tuxedo:   'tuxedo',
+  black:    'tuxedo',
+  white:    'white',
+  calico:   'calico',
+  tabby:    'tabby',
+  scottish: 'tabby',
+  siamese:  'siamese',
 };
 
-// Layout config per sprite sheet: how many columns/rows the poses are arranged in
-// Each sprite sheet has 4 poses: idle(sit), walk, sleep, play
-const LAYOUT_CONFIG = {
-  ginger:  { cols: 3, rows: 2, frameCount: 5 }, // 3 top + 2 bottom
-  grey:    { cols: 2, rows: 2, frameCount: 4 },
-  tuxedo:  { cols: 4, rows: 1, frameCount: 4 },
-  white:   { cols: 4, rows: 1, frameCount: 4 },
-  calico:  { cols: 4, rows: 1, frameCount: 4 },
-  tabby:   { cols: 4, rows: 1, frameCount: 4 },
-  siamese: { cols: 2, rows: 2, frameCount: 4 },
+// Layout: how poses are arranged in each sprite sheet
+const LAYOUT = {
+  // base sheets (idle, walk-single, sleep, play)
+  ginger:  { cols: 3, rows: 2, count: 5 },
+  grey:    { cols: 2, rows: 2, count: 4 },
+  tuxedo:  { cols: 4, rows: 1, count: 4 },
+  white:   { cols: 4, rows: 1, count: 4 },
+  calico:  { cols: 4, rows: 1, count: 4 },
+  tabby:   { cols: 4, rows: 1, count: 4 },
+  siamese: { cols: 2, rows: 2, count: 4 },
+  // walk & pet strips are always 4-in-a-row
 };
 
-// State → frame index mapping (which sprite pose to use for each game state)
-const STATE_FRAME_MAP = {
-  idle: 0,
-  sit:  0,
-  pet:  0,
-  walk: 1,
-  eat:  1,
-  sleep: 2,
-  play: 3,
-};
-
-// Global sprite cache: breed → { idle: Canvas, walk: Canvas, sleep: Canvas, play: Canvas }
+// ── Global sprite cache ──
+// breed → { idle: [Canvas], walk: [Canvas,...], sleep: [Canvas], play: [Canvas], pet: [Canvas,...] }
 const spriteCache = {};
 
-/**
- * Load a single image and return a promise.
- */
+// ────────────────────────────────────────────
+// Image loading
+// ────────────────────────────────────────────
 function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error(`Failed to load sprite: ${src}`));
+    img.onerror = () => reject(new Error(`Failed to load: ${src}`));
     img.src = src;
   });
 }
 
-/**
- * Remove near-white background pixels from an image, making them transparent.
- * Returns an offscreen canvas with transparency applied.
- */
+function tryLoadImage(src) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null); // silently fail
+    img.src = src;
+  });
+}
+
+// ────────────────────────────────────────────
+// Background removal via edge flood-fill
+// Only removes white pixels connected to image edges,
+// preserving white cat fur inside the outline.
+// ────────────────────────────────────────────
 function removeWhiteBackground(image) {
   const canvas = document.createElement('canvas');
-  canvas.width = image.width;
-  canvas.height = image.height;
+  const w = image.width;
+  const h = image.height;
+  canvas.width = w;
+  canvas.height = h;
   const ctx = canvas.getContext('2d');
   ctx.drawImage(image, 0, 0);
 
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const imageData = ctx.getImageData(0, 0, w, h);
   const data = imageData.data;
+  const total = w * h;
 
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i], g = data[i + 1], b = data[i + 2];
-    // If pixel is near-white (background), make fully transparent
-    if (r > 230 && g > 230 && b > 230) {
-      data[i + 3] = 0;
+  // Helper: check if pixel at flat index is near-white
+  const isNearWhite = (pos) => {
+    const i = pos * 4;
+    return data[i] > 225 && data[i + 1] > 225 && data[i + 2] > 225 && data[i + 3] > 100;
+  };
+
+  // Visited & background masks
+  const visited = new Uint8Array(total);
+  const isBg = new Uint8Array(total);
+
+  // BFS queue (use array + pointer for O(1) dequeue)
+  const queue = [];
+  let head = 0;
+
+  // Seed: all edge pixels that are near-white
+  for (let x = 0; x < w; x++) {
+    const top = x, bot = (h - 1) * w + x;
+    if (isNearWhite(top) && !visited[top]) { visited[top] = 1; isBg[top] = 1; queue.push(top); }
+    if (isNearWhite(bot) && !visited[bot]) { visited[bot] = 1; isBg[bot] = 1; queue.push(bot); }
+  }
+  for (let y = 1; y < h - 1; y++) {
+    const left = y * w, right = y * w + (w - 1);
+    if (isNearWhite(left) && !visited[left]) { visited[left] = 1; isBg[left] = 1; queue.push(left); }
+    if (isNearWhite(right) && !visited[right]) { visited[right] = 1; isBg[right] = 1; queue.push(right); }
+  }
+
+  // BFS flood fill
+  while (head < queue.length) {
+    const pos = queue[head++];
+    const x = pos % w;
+    const y = (pos - x) / w;
+
+    // 4-connected neighbors
+    const neighbors = [];
+    if (x > 0) neighbors.push(pos - 1);
+    if (x < w - 1) neighbors.push(pos + 1);
+    if (y > 0) neighbors.push(pos - w);
+    if (y < h - 1) neighbors.push(pos + w);
+
+    for (const npos of neighbors) {
+      if (!visited[npos] && isNearWhite(npos)) {
+        visited[npos] = 1;
+        isBg[npos] = 1;
+        queue.push(npos);
+      }
     }
-    // Soften edges near white regions for anti-aliasing
-    else if (r > 210 && g > 210 && b > 210) {
-      data[i + 3] = Math.max(0, data[i + 3] - 120);
+  }
+
+  // Apply transparency to background pixels
+  for (let i = 0; i < total; i++) {
+    if (isBg[i]) {
+      data[i * 4 + 3] = 0; // fully transparent
+    }
+  }
+
+  // Anti-alias: soften pixels adjacent to background
+  for (let i = 0; i < total; i++) {
+    if (!isBg[i] && data[i * 4 + 3] > 0) {
+      const x = i % w;
+      const y = (i - x) / w;
+      let bgNeighbors = 0;
+      if (x > 0 && isBg[i - 1]) bgNeighbors++;
+      if (x < w - 1 && isBg[i + 1]) bgNeighbors++;
+      if (y > 0 && isBg[i - w]) bgNeighbors++;
+      if (y < h - 1 && isBg[i + w]) bgNeighbors++;
+
+      if (bgNeighbors >= 2) {
+        // Edge pixel: reduce alpha for smooth anti-aliasing
+        data[i * 4 + 3] = Math.max(60, data[i * 4 + 3] - 80);
+      }
     }
   }
 
@@ -82,18 +148,18 @@ function removeWhiteBackground(image) {
   return canvas;
 }
 
-/**
- * Find the tight bounding box of non-transparent pixels in a canvas region.
- */
-function findBounds(ctx, rx, ry, rw, rh) {
-  const imageData = ctx.getImageData(rx, ry, rw, rh);
-  const data = imageData.data;
-  let minX = rw, minY = rh, maxX = 0, maxY = 0;
+// ────────────────────────────────────────────
+// Frame extraction
+// ────────────────────────────────────────────
 
+/** Find tight bounding box of visible pixels in a region */
+function findBounds(ctx, rx, ry, rw, rh) {
+  const id = ctx.getImageData(rx, ry, rw, rh);
+  const d = id.data;
+  let minX = rw, minY = rh, maxX = 0, maxY = 0;
   for (let y = 0; y < rh; y++) {
     for (let x = 0; x < rw; x++) {
-      const alpha = data[(y * rw + x) * 4 + 3];
-      if (alpha > 20) {
+      if (d[(y * rw + x) * 4 + 3] > 20) {
         if (x < minX) minX = x;
         if (x > maxX) maxX = x;
         if (y < minY) minY = y;
@@ -101,149 +167,151 @@ function findBounds(ctx, rx, ry, rw, rh) {
       }
     }
   }
-
-  if (maxX < minX || maxY < minY) {
-    // No visible pixels found, return center region
-    return { x: rx + rw * 0.25, y: ry + rh * 0.25, w: rw * 0.5, h: rh * 0.5 };
-  }
-
-  return {
-    x: rx + minX,
-    y: ry + minY,
-    w: maxX - minX + 1,
-    h: maxY - minY + 1
-  };
+  if (maxX < minX) return { x: rx, y: ry, w: rw, h: rh }; // fallback
+  return { x: rx + minX, y: ry + minY, w: maxX - minX + 1, h: maxY - minY + 1 };
 }
 
-/**
- * Extract a single sprite frame from a processed canvas, auto-cropping to content bounds.
- * Returns a tightly cropped canvas.
- */
-function extractFrame(processedCanvas, regionX, regionY, regionW, regionH) {
-  const ctx = processedCanvas.getContext('2d');
-  const bounds = findBounds(ctx, regionX, regionY, regionW, regionH);
+/** Extract a single cropped frame from a processed canvas */
+function extractFrame(processed, rx, ry, rw, rh) {
+  const ctx = processed.getContext('2d');
+  const b = findBounds(ctx, rx, ry, rw, rh);
+  const pad = 2;
+  const sx = Math.max(0, b.x - pad);
+  const sy = Math.max(0, b.y - pad);
+  const sw = Math.min(processed.width - sx, b.w + pad * 2);
+  const sh = Math.min(processed.height - sy, b.h + pad * 2);
 
-  // Add a small padding
-  const pad = 4;
-  const sx = Math.max(0, bounds.x - pad);
-  const sy = Math.max(0, bounds.y - pad);
-  const sw = Math.min(processedCanvas.width - sx, bounds.w + pad * 2);
-  const sh = Math.min(processedCanvas.height - sy, bounds.h + pad * 2);
-
-  const frameCanvas = document.createElement('canvas');
-  frameCanvas.width = sw;
-  frameCanvas.height = sh;
-  const fctx = frameCanvas.getContext('2d');
-  fctx.drawImage(processedCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
-
-  return frameCanvas;
+  const fc = document.createElement('canvas');
+  fc.width = sw; fc.height = sh;
+  fc.getContext('2d').drawImage(processed, sx, sy, sw, sh, 0, 0, sw, sh);
+  return fc;
 }
 
-/**
- * Split a processed sprite sheet into individual frames based on layout config.
- */
-function splitFrames(processedCanvas, layout) {
-  const w = processedCanvas.width;
-  const h = processedCanvas.height;
-  const { cols, rows } = layout;
-
-  const cellW = w / cols;
-  const cellH = h / rows;
-
+/** Split a processed image into frame array based on grid layout */
+function splitIntoFrames(processed, cols, rows, count) {
+  const cw = processed.width / cols;
+  const ch = processed.height / rows;
   const frames = [];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (frames.length >= (layout.frameCount || 4)) break;
-      frames.push(extractFrame(processedCanvas, c * cellW, r * cellH, cellW, cellH));
+  for (let r = 0; r < rows && frames.length < count; r++) {
+    for (let c = 0; c < cols && frames.length < count; c++) {
+      frames.push(extractFrame(processed, c * cw, r * ch, cw, ch));
     }
   }
-
   return frames;
 }
 
-/**
- * Process a single breed's sprite sheet: load, remove background, split into frames.
- */
-async function processBreedSprite(breedKey) {
-  const src = BREED_SPRITE_MAP[breedKey];
-  if (!src) return null;
+/** Create a mirrored/shifted copy for 2-frame idle breathing */
+function createBreathingFrames(singleFrame) {
+  // Frame 1: original
+  // Frame 2: slightly squished vertically (breathing in)
+  const f2 = document.createElement('canvas');
+  const squish = 0.97;
+  f2.width = singleFrame.width;
+  f2.height = singleFrame.height;
+  const ctx = f2.getContext('2d');
+  const dy = singleFrame.height * (1 - squish);
+  ctx.drawImage(singleFrame, 0, dy, singleFrame.width, singleFrame.height * squish);
+  return [singleFrame, f2];
+}
 
-  // Check if this sprite file was already processed (shared sprites)
-  const existingBreed = Object.keys(spriteCache).find(
-    b => BREED_SPRITE_MAP[b] === src && spriteCache[b]
-  );
-  if (existingBreed) {
-    // Reuse already-processed frames
-    spriteCache[breedKey] = spriteCache[existingBreed];
+// ────────────────────────────────────────────
+// Main loading logic
+// ────────────────────────────────────────────
+
+async function processBreed(breedKey) {
+  const spriteKey = BREED_SPRITE_MAP[breedKey];
+  if (!spriteKey) return null;
+
+  // Reuse if already processed (shared sprites like black→tuxedo, scottish→tabby)
+  if (spriteCache[breedKey]) return spriteCache[breedKey];
+  const sharedBreed = Object.keys(spriteCache).find(b => BREED_SPRITE_MAP[b] === spriteKey);
+  if (sharedBreed && spriteCache[sharedBreed]) {
+    spriteCache[breedKey] = spriteCache[sharedBreed];
     return spriteCache[breedKey];
   }
 
-  const image = await loadImage(src);
-  const processedCanvas = removeWhiteBackground(image);
+  const basePath = `assets/sprites/${spriteKey}`;
 
-  // Determine layout: use the breed's own config, or fallback to the original breed
-  const layoutKey = Object.keys(LAYOUT_CONFIG).find(k => BREED_SPRITE_MAP[k] === src) || breedKey;
-  const layout = LAYOUT_CONFIG[layoutKey] || { cols: 2, rows: 2, frameCount: 4 };
+  // Load base sprite sheet + optional animation strips
+  const [baseImg, walkImg, petImg] = await Promise.all([
+    loadImage(`${basePath}.png`),
+    tryLoadImage(`${basePath}_walk.png`),
+    tryLoadImage(`${basePath}_pet.png`),
+  ]);
 
-  const allFrames = splitFrames(processedCanvas, layout);
+  // Process base sheet
+  const layout = LAYOUT[spriteKey] || { cols: 2, rows: 2, count: 4 };
+  const processedBase = removeWhiteBackground(baseImg);
+  const baseFrames = splitIntoFrames(processedBase, layout.cols, layout.rows, layout.count);
+  // baseFrames: [0]=idle/sit, [1]=walk, [2]=sleep, [3]=play
 
-  // Map to named states
-  const namedFrames = {
-    idle:  allFrames[0] || allFrames[0],
-    walk:  allFrames[1] || allFrames[0],
-    sleep: allFrames[2] || allFrames[0],
-    play:  allFrames[3] || allFrames[1] || allFrames[0],
+  // Process walk cycle strip → 4 frames
+  let walkFrames;
+  if (walkImg) {
+    const processedWalk = removeWhiteBackground(walkImg);
+    walkFrames = splitIntoFrames(processedWalk, 4, 1, 4);
+  } else {
+    // Fallback: use single walk frame repeated
+    walkFrames = [baseFrames[1] || baseFrames[0]];
+  }
+
+  // Process pet animation strip → 4 frames
+  let petFrames;
+  if (petImg) {
+    const processedPet = removeWhiteBackground(petImg);
+    petFrames = splitIntoFrames(processedPet, 4, 1, 4);
+  } else {
+    // Fallback: use idle frame with breathing
+    petFrames = createBreathingFrames(baseFrames[0]);
+  }
+
+  // Build idle frames (2-frame breathing from base idle)
+  const idleFrames = createBreathingFrames(baseFrames[0]);
+
+  // Sleep frames (2-frame breathing from sleep sprite)
+  const sleepFrames = createBreathingFrames(baseFrames[2] || baseFrames[0]);
+
+  // Play frames: use play sprite + idle for a 2-frame pounce cycle
+  const playFrame = baseFrames[3] || baseFrames[1] || baseFrames[0];
+  const playFrames = [playFrame, baseFrames[0]]; // pounce → reset
+
+  const result = {
+    idle: idleFrames,
+    walk: walkFrames,
+    sleep: sleepFrames,
+    play: playFrames,
+    pet: petFrames,
+    eat: walkFrames, // eating uses walk animation
   };
 
-  spriteCache[breedKey] = namedFrames;
-  return namedFrames;
+  spriteCache[breedKey] = result;
+  return result;
 }
 
 /**
- * Load and process ALL breed sprites. Call this once before starting the game loop.
- * Returns a promise that resolves when all sprites are ready.
+ * Load ALL breed sprites. Call once before game loop starts.
  */
 export async function loadAllSprites() {
-  // Get unique breed keys that have their own sprite file
-  const uniqueBreeds = [...new Set(Object.values(BREED_SPRITE_MAP))];
-  const breedKeys = Object.keys(BREED_SPRITE_MAP);
+  const breeds = Object.keys(BREED_SPRITE_MAP);
 
-  // Process primary breeds first (those with unique sprite files)
-  const primaryBreeds = breedKeys.filter((b, i) => {
-    return breedKeys.findIndex(k => BREED_SPRITE_MAP[k] === BREED_SPRITE_MAP[b]) === i;
-  });
-
-  // Load primary breeds in parallel
-  await Promise.all(primaryBreeds.map(b => processBreedSprite(b)));
+  // Process unique breeds first
+  const uniqueKeys = [...new Set(Object.values(BREED_SPRITE_MAP))];
+  const primaryBreeds = uniqueKeys.map(k => breeds.find(b => BREED_SPRITE_MAP[b] === k));
+  await Promise.all(primaryBreeds.map(b => processBreed(b)));
 
   // Then map shared breeds
-  for (const breed of breedKeys) {
-    if (!spriteCache[breed]) {
-      await processBreedSprite(breed);
-    }
+  for (const b of breeds) {
+    if (!spriteCache[b]) await processBreed(b);
   }
 
-  console.log(`[SpriteLoader] Loaded sprites for ${Object.keys(spriteCache).length} breeds`);
+  console.log(`[SpriteLoader] Loaded ${Object.keys(spriteCache).length} breeds with animation frames`);
   return spriteCache;
 }
 
 /**
- * Get the sprite frames for a given breed.
- * Returns { idle: Canvas, walk: Canvas, sleep: Canvas, play: Canvas } or null.
+ * Get sprite frames for a breed.
+ * Returns { idle: [Canvas,...], walk: [Canvas,...], ... }
  */
 export function getSprite(breed) {
   return spriteCache[breed] || spriteCache['tabby'] || null;
-}
-
-/**
- * Get the correct frame canvas for a given game state.
- */
-export function getFrameForState(breed, state) {
-  const sprites = getSprite(breed);
-  if (!sprites) return null;
-
-  const frameKey = STATE_FRAME_MAP[state] !== undefined ? 
-    ['idle', 'walk', 'sleep', 'play'][STATE_FRAME_MAP[state]] : 'idle';
-
-  return sprites[frameKey] || sprites.idle;
 }
