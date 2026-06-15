@@ -133,6 +133,42 @@ function spawnToy(type, x, y) {
 // HTML5 Drag Drop support for spawning from inventory
 const toyItems = document.querySelectorAll('.toy-item');
 toyItems.forEach(item => {
+  // Clear all toys button
+  if (item.id === 'toy-clear-all') {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      initAudio();
+      
+      if (state.toys.length === 0) {
+        addLog('치울 장난감이 없습니다.');
+        return;
+      }
+      
+      // Reset cats interacting with toys/boxes
+      state.cats.forEach(cat => {
+        if (cat.targetToy) {
+          cat.targetToy = null;
+          if (cat.state === 'play' || cat.state === 'eat') {
+            cat.state = 'idle';
+            cat.stateTimer = 1;
+          }
+        }
+        if (cat.inBox) {
+          cat.inBox = null;
+          if (cat.state === 'sleep') {
+            cat.state = 'idle';
+            cat.stateTimer = 1;
+          }
+        }
+      });
+      
+      state.toys = [];
+      addLog('🧹 방 안의 모든 장난감과 상자를 깨끗이 치웠습니다.');
+      playChime();
+    });
+    return;
+  }
+
   // Laser Pointer is toggleable, not drop-physics
   if (item.id === 'toy-laser') {
     item.addEventListener('click', (e) => {
@@ -323,6 +359,46 @@ window.addEventListener('mouseup', handlePointerUp);
 canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
 canvas.addEventListener('touchmove', handlePointerMove, { passive: false });
 window.addEventListener('touchend', handlePointerUp);
+
+// Double-click to remove an individual toy
+canvas.addEventListener('dblclick', (e) => {
+  const pos = getMousePos(e);
+  const mx = pos.x;
+  const my = pos.y;
+
+  const clickedToyIdx = state.toys.findIndex(t => t.isClicked(mx, my));
+  if (clickedToyIdx > -1) {
+    const toy = state.toys[clickedToyIdx];
+    
+    // Reset any cat interacting with this toy
+    state.cats.forEach(cat => {
+      if (cat.targetToy === toy) {
+        cat.targetToy = null;
+        if (cat.state === 'play' || cat.state === 'eat') {
+          cat.state = 'idle';
+          cat.stateTimer = 1;
+        }
+      }
+      if (cat.inBox === toy) {
+        cat.inBox = null;
+        if (cat.state === 'sleep') {
+          cat.state = 'idle';
+          cat.stateTimer = 1;
+        }
+      }
+    });
+
+    state.toys.splice(clickedToyIdx, 1);
+    
+    let koreanName = '장난감';
+    if (toy.type === 'yarn') koreanName = '🧶 털실 뭉치';
+    else if (toy.type === 'box') koreanName = '📦 상자';
+    else if (toy.type === 'treat') koreanName = '🐟 간식';
+    
+    addLog(`바닥에 놓인 ${koreanName}을(를) 치웠습니다.`);
+    playChime();
+  }
+});
 
 // Cat Details Card UI Controller
 const detailsCard = document.getElementById('cat-details-card');
