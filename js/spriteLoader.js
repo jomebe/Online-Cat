@@ -298,6 +298,11 @@ function trimCellNoise(ctx, rx, ry, rw, rh) {
 
 /** Extract a single cropped frame from a processed canvas */
 function extractFrame(processed, rx, ry, rw, rh) {
+  rx = Math.round(rx);
+  ry = Math.round(ry);
+  rw = Math.round(rw);
+  rh = Math.round(rh);
+
   const ctx = processed.getContext('2d');
   trimCellNoise(ctx, rx, ry, rw, rh);
   const b = findBounds(ctx, rx, ry, rw, rh);
