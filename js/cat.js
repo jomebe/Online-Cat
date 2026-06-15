@@ -1,5 +1,6 @@
 // js/cat.js
 import { playMeow, startPurr, stopPurr } from './audio.js';
+import { getSprite, getFrameForState } from './spriteLoader.js';
 
 export class Cat {
   constructor(name, breed, options = {}) {
@@ -8,6 +9,7 @@ export class Cat {
     this.breed = breed || 'tabby'; // tabby, tuxedo, calico, siamese, black, white, ginger, grey
     this.accessories = options.accessories || []; // 'collar', 'ribbon', 'hat', 'glasses'
     this.gender = options.gender || (Math.random() > 0.5 ? 'male' : 'female');
+    this.spriteFrames = null; // Set after sprites load
 
     // Position & Physics
     this.x = options.x || 100 + Math.random() * 400;
@@ -481,489 +483,132 @@ export class Cat {
     }
   }
 
-  // Draw the cat procedurally
+  // Draw the cat using sprites
   draw(ctx) {
-    ctx.save();
-    ctx.translate(this.x, this.y);
-    ctx.scale(this.direction * this.scale, this.scale); // flip based on direction
+    // Lazy-load sprite frames if not yet set
+    if (!this.spriteFrames) {
+      this.spriteFrames = getSprite(this.breed);
+    }
 
-    // Determine key rotation/translation based on states
+    // Determine which frame to use based on current state
+    let frameKey = 'idle';
+    if (this.state === 'walk' || this.state === 'eat') frameKey = 'walk';
+    else if (this.state === 'sleep') frameKey = 'sleep';
+    else if (this.state === 'play') frameKey = 'play';
+    // idle, sit, pet all use idle frame
+
+    const frame = this.spriteFrames ? this.spriteFrames[frameKey] : null;
+
+    // If sprites not loaded yet, draw a simple placeholder circle
+    if (!frame) {
+      ctx.save();
+      ctx.fillStyle = '#ccc';
+      ctx.beginPath();
+      ctx.arc(this.x, this.y - 20 * this.scale, 15 * this.scale, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
+
+    // Calculate animation offsets
     let bodyYOffset = 0;
-    let headXOffset = 22;
-    let headYOffset = -18;
-    let headRotation = 0;
-    let tailAngle = 0;
-    let legsDrawn = true;
-    let sleepPose = false;
+    let scaleXMod = 1.0;
+    let scaleYMod = 1.0;
+    let rotation = 0;
+    let shakeX = 0;
 
-    // Apply animation cycles
     if (this.hitTimer > 0) {
-      bodyYOffset = Math.sin(this.animTime * 45) * 2.2; // rapid vibration squish
-      headRotation = Math.sin(this.animTime * 35) * 0.25; // dizzy head tilt
-      legsDrawn = false; // tuck legs in surprise!
-      tailAngle = Math.sin(this.animTime * 25) * 0.4; // fast tail wiggle
+      // Hit: vibrate rapidly + squish
+      shakeX = Math.sin(this.animTime * 45) * 3;
+      scaleYMod = 1.0 + Math.sin(this.animTime * 30) * 0.08;
+      scaleXMod = 1.0 - Math.sin(this.animTime * 30) * 0.05;
     } else if (this.isDragging) {
-      bodyYOffset = -4;
-      headYOffset = -14;
-      headRotation = 0.05;
-      tailAngle = Math.PI * 0.45 + Math.sin(this.animTime * 3.5) * 0.08; // hanging tail sways slowly
-    } else if (this.state === 'walk' || this.state === 'play' || this.state === 'eat') {
-      bodyYOffset = Math.sin(this.animTime * 11) * 1.5;
-      headYOffset = -18 + Math.sin(this.animTime * 11) * 0.8;
-      tailAngle = Math.sin(this.animTime * 6) * 0.25;
-    } else if (this.state === 'idle') {
-      bodyYOffset = Math.sin(this.animTime * 2.2) * 0.5; // breathing
-      tailAngle = Math.sin(this.animTime * 1.5) * 0.15;
+      // Dragging: dangling, slight rotation
+      bodyYOffset = -5;
+      rotation = Math.sin(this.animTime * 2.5) * 0.06;
+    } else if (this.state === 'walk' || this.state === 'eat' || this.state === 'play') {
+      // Walking/playing: bounce
+      bodyYOffset = Math.sin(this.animTime * 11) * 2;
     } else if (this.state === 'pet') {
-      bodyYOffset = 1.5 + Math.sin(this.animTime * 4.5) * 0.3; // purr vibrate
-      headYOffset = -15; // tilted down slightly for petting
-      headRotation = 0.05;
-      tailAngle = Math.sin(this.animTime * 14) * 0.35; // happy tail wag
-    } else if (this.state === 'sleep' || this.state === 'sit') {
-      sleepPose = true;
-      legsDrawn = false;
-      bodyYOffset = 5 + Math.sin(this.animTime * 1.5) * 0.5; // lowered, slow breathing
-      headXOffset = 15;
-      headYOffset = -10;
-      tailAngle = -Math.PI * 0.7 + Math.sin(this.animTime * 0.8) * 0.05; // curled
-    }
-
-    // 1. Draw Tail (drawn behind body)
-    ctx.save();
-    ctx.translate(-24, -8 + bodyYOffset);
-    ctx.rotate(tailAngle);
-    
-    // Tail Shadow
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
-    ctx.lineWidth = 9.5;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(0, 5);
-    ctx.quadraticCurveTo(-15, -15, -10, -32);
-    ctx.stroke();
-
-    // Tail fill
-    ctx.strokeStyle = this.breed === 'siamese' ? this.colors.points : this.colors.body;
-    ctx.lineWidth = 7.5;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.quadraticCurveTo(-15, -20, -10, -35);
-    ctx.stroke();
-    
-    // Calico tail patches
-    if (this.breed === 'calico') {
-      ctx.strokeStyle = this.colors.orangePatches;
-      ctx.lineWidth = 7.5;
-      ctx.setLineDash([8, 12]);
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.quadraticCurveTo(-15, -20, -10, -35);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-    ctx.restore();
-
-    // 2. Draw Legs (if standing/walking)
-    if (legsDrawn) {
-      const legW = 6;
-      const legH = 14;
-      const legSpread = 12;
-      
-      let frontLegSwing = 0;
-      let backLegSwing = 0;
-
-      if (this.isDragging) {
-        // Legs hang loose, swing very slowly like a pendulum
-        frontLegSwing = Math.sin(this.animTime * 3) * 6;
-        backLegSwing = -Math.sin(this.animTime * 3) * 6;
-      } else {
-        const cycle = this.animTime * 11;
-        frontLegSwing = Math.sin(cycle) * 7;
-        backLegSwing = -Math.sin(cycle) * 7;
-      }
-
-      ctx.fillStyle = this.breed === 'siamese' ? this.colors.points : this.colors.body;
-
-      // Back Leg 1
-      ctx.save();
-      ctx.translate(-16, 2);
-      ctx.rotate(backLegSwing * Math.PI / 180);
-      ctx.fillRect(-legW/2, 0, legW, legH);
-      // Paws (white socks for tuxedo/tabby)
-      if (this.colors.paws) {
-        ctx.fillStyle = this.colors.paws;
-        ctx.fillRect(-legW/2, legH - 3, legW, 4.5);
-      }
-      ctx.restore();
-
-      // Back Leg 2
-      ctx.save();
-      ctx.translate(-8, 2);
-      ctx.rotate(-backLegSwing * Math.PI / 180);
-      ctx.fillRect(-legW/2, 0, legW, legH);
-      if (this.colors.paws) {
-        ctx.fillStyle = this.colors.paws;
-        ctx.fillRect(-legW/2, legH - 3, legW, 4.5);
-      }
-      ctx.restore();
-
-      // Front Leg 1
-      ctx.save();
-      ctx.translate(10, 2);
-      ctx.rotate(frontLegSwing * Math.PI / 180);
-      ctx.fillRect(-legW/2, 0, legW, legH);
-      if (this.colors.paws) {
-        ctx.fillStyle = this.colors.paws;
-        ctx.fillRect(-legW/2, legH - 3, legW, 4.5);
-      }
-      ctx.restore();
-
-      // Front Leg 2
-      ctx.fillStyle = this.breed === 'siamese' ? this.colors.points : this.colors.body;
-      ctx.save();
-      ctx.translate(18, 2);
-      ctx.rotate(-frontLegSwing * Math.PI / 180);
-      ctx.fillRect(-legW/2, 0, legW, legH);
-      if (this.colors.paws) {
-        ctx.fillStyle = this.colors.paws;
-        ctx.fillRect(-legW/2, legH - 3, legW, 4.5);
-      }
-      ctx.restore();
-    }
-
-    // 3. Draw Body
-    ctx.save();
-    ctx.translate(0, bodyYOffset);
-
-    // Body shadow
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-    ctx.beginPath();
-    ctx.ellipse(0, 6, 28, 14, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Body fill
-    ctx.fillStyle = this.colors.body;
-    ctx.beginPath();
-    if (sleepPose) {
-      // Sleeps curled up: wider, flatter oval
-      ctx.ellipse(0, 0, 26, 12, 0, 0, Math.PI * 2);
+      // Petting: purr vibrate
+      bodyYOffset = Math.sin(this.animTime * 14) * 0.8;
+      scaleYMod = 1.0 + Math.sin(this.animTime * 4.5) * 0.015;
+    } else if (this.state === 'sleep') {
+      // Sleeping: gentle breathing
+      scaleYMod = 1.0 + Math.sin(this.animTime * 1.5) * 0.025;
+      bodyYOffset = 2;
     } else {
-      ctx.ellipse(0, -2, 27, 13, 0, 0, Math.PI * 2);
-    }
-    ctx.fill();
-
-    // Draw Tabby/Grey stripes on body
-    if (this.colors.stripes) {
-      ctx.fillStyle = this.colors.stripes;
-      ctx.beginPath();
-      // Draw 3 stripes on back
-      ctx.fillRect(-12, -14, 3, 6);
-      ctx.fillRect(-4, -15, 3.5, 7);
-      ctx.fillRect(4, -14, 3, 6);
+      // Idle/sit: subtle breathing
+      scaleYMod = 1.0 + Math.sin(this.animTime * 2.2) * 0.015;
+      bodyYOffset = Math.sin(this.animTime * 2.2) * 0.8;
     }
 
-    // Draw Calico patches
-    if (this.breed === 'calico') {
-      ctx.fillStyle = this.colors.orangePatches;
-      ctx.beginPath();
-      ctx.arc(-10, -7, 10, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = this.colors.blackPatches;
-      ctx.beginPath();
-      ctx.arc(8, -8, 8, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    // Calculate sprite render dimensions
+    // Normalize to consistent display size regardless of source frame size
+    const baseRenderH = 70; // base height in pixels at scale=1
+    const aspect = frame.width / frame.height;
+    const baseRenderW = baseRenderH * aspect;
 
-    // Draw Tuxedo white chest
-    if (this.colors.chest) {
-      ctx.fillStyle = this.colors.chest;
-      ctx.beginPath();
-      ctx.ellipse(14, -4, 9, 10, -0.2, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
+    const renderW = baseRenderW * this.scale * scaleXMod;
+    const renderH = baseRenderH * this.scale * scaleYMod;
 
-    // 4. Draw Head
     ctx.save();
-    ctx.translate(headXOffset, headYOffset + bodyYOffset);
-    ctx.rotate(headRotation);
+    ctx.translate(this.x + shakeX, this.y + bodyYOffset);
+    ctx.rotate(rotation);
 
-    // Head Base
-    ctx.fillStyle = this.colors.body;
-    ctx.beginPath();
-    ctx.arc(0, 0, 16, 0, Math.PI * 2);
-    ctx.fill();
+    // Flip based on direction (sprites face right by default)
+    ctx.scale(this.direction, 1);
 
-    // Siamese face mask
-    if (this.breed === 'siamese') {
-      ctx.fillStyle = this.colors.points;
-      ctx.beginPath();
-      ctx.ellipse(2, 2, 11, 9, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    // Draw the sprite
+    // Anchor: bottom-center of the sprite sits at the cat's (x, y) position
+    const drawX = -renderW / 2;
+    const drawY = -renderH;
 
-    // Grey / Tabby forehead stripes
-    if (this.colors.stripes) {
-      ctx.fillStyle = this.colors.stripes;
-      ctx.fillRect(-3, -16, 2, 5);
-      ctx.fillRect(1, -16, 2, 5);
-    }
-
-    // Calico face patch
-    if (this.breed === 'calico') {
-      ctx.fillStyle = this.colors.orangePatches;
-      ctx.beginPath();
-      ctx.arc(-8, -6, 8, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Draw Ears
-    const isFolded = this.breed === 'scottish'; // Scottish Fold ear style
-    ctx.fillStyle = this.breed === 'siamese' ? this.colors.points : this.colors.body;
-    
-    // Left Ear
-    ctx.beginPath();
-    if (isFolded) {
-      ctx.moveTo(-13, -8);
-      ctx.quadraticCurveTo(-14, -13, -9, -13);
-      ctx.lineTo(-4, -14);
-    } else {
-      ctx.moveTo(-13, -7);
-      ctx.lineTo(-14, -20);
-      ctx.lineTo(-4, -13);
-    }
-    ctx.fill();
-    // Inner left ear (pink)
-    ctx.fillStyle = '#ffc0cb';
-    ctx.beginPath();
-    if (!isFolded) {
-      ctx.moveTo(-11, -8);
-      ctx.lineTo(-12, -17);
-      ctx.lineTo(-6, -12);
-      ctx.fill();
-    }
-
-    // Right Ear
-    ctx.fillStyle = this.breed === 'siamese' ? this.colors.points : this.colors.body;
-    ctx.beginPath();
-    if (isFolded) {
-      ctx.moveTo(3, -14);
-      ctx.quadraticCurveTo(8, -13, 8, -8);
-      ctx.lineTo(13, -7);
-    } else {
-      ctx.moveTo(3, -13);
-      ctx.lineTo(10, -21);
-      ctx.lineTo(12, -8);
-    }
-    ctx.fill();
-    // Inner right ear (pink)
-    ctx.fillStyle = '#ffc0cb';
-    ctx.beginPath();
-    if (!isFolded) {
-      ctx.moveTo(5, -12);
-      ctx.lineTo(8, -18);
-      ctx.lineTo(10, -9);
-      ctx.fill();
-    }
-
-    // Draw Eyes (happy arcs for sleep/petting, open circles otherwise)
-    const sleepingOrPetting = (this.state === 'sleep' || this.state === 'pet') && !this.isDragging;
-    ctx.strokeStyle = '#2f3542';
-    ctx.lineWidth = 2.2;
-    ctx.lineCap = 'round';
-
+    // Hit state: apply red tint overlay
     if (this.hitTimer > 0) {
-      // Squinty / dizzy eyes (>_<)
-      ctx.strokeStyle = '#2f3542';
-      ctx.lineWidth = 2.4;
-      ctx.lineCap = 'round';
-      // Left eye >
-      ctx.beginPath();
-      ctx.moveTo(-8, -4);
-      ctx.lineTo(-4, -2);
-      ctx.lineTo(-8, 0);
-      ctx.stroke();
-
-      // Right eye <
-      ctx.beginPath();
-      ctx.moveTo(8, -4);
-      ctx.lineTo(4, -2);
-      ctx.lineTo(8, 0);
-      ctx.stroke();
-    } else if (sleepingOrPetting) {
-      // Left Eye closed
-      ctx.beginPath();
-      ctx.arc(-5, -2, 3, Math.PI, 0, false); // happy curve
-      ctx.stroke();
-
-      // Right Eye closed
-      ctx.beginPath();
-      ctx.arc(5, -2, 3, Math.PI, 0, false);
-      ctx.stroke();
+      // Draw sprite slightly transparent
+      ctx.globalAlpha = 0.7;
+      ctx.drawImage(frame, drawX, drawY, renderW, renderH);
+      ctx.globalAlpha = 1.0;
+      
+      // Red tint overlay using composite
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.fillStyle = 'rgba(255, 80, 80, 0.35)';
+      ctx.fillRect(drawX, drawY, renderW, renderH);
+      ctx.globalCompositeOperation = 'source-over';
     } else {
-      // Open Eyes
-      ctx.fillStyle = this.colors.eyes;
-      ctx.beginPath();
-      ctx.arc(-5, -2, 4, 0, Math.PI * 2);
-      ctx.arc(5, -2, 4, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Pupils (slit for cat eyes)
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(-5.5, -5, 1, 6);
-      ctx.fillRect(4.5, -5, 1, 6);
+      ctx.drawImage(frame, drawX, drawY, renderW, renderH);
     }
 
-    // Draw Nose & Mouth
-    ctx.fillStyle = this.colors.nose;
+    // Draw Shadow under cat
+    ctx.globalAlpha = 0.12;
+    ctx.fillStyle = '#000';
     ctx.beginPath();
-    ctx.moveTo(-1.5, 2);
-    ctx.lineTo(1.5, 2);
-    ctx.lineTo(0, 3.5);
-    ctx.closePath();
+    ctx.ellipse(0, 0, renderW * 0.35, 5 * this.scale, 0, 0, Math.PI * 2);
     ctx.fill();
+    ctx.globalAlpha = 1.0;
 
-    // Mouth lines
-    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.moveTo(0, 3.5);
-    ctx.quadraticCurveTo(-1.5, 5.5, -3, 4);
-    ctx.moveTo(0, 3.5);
-    ctx.quadraticCurveTo(1.5, 5.5, 3, 4);
-    ctx.stroke();
+    // Draw Accessories (simplified overlay on top of sprite)
+    if (this.accessories.length > 0) {
+      this.drawAccessories(ctx, renderW, renderH);
+    }
 
-    // Draw Whiskers
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
-    ctx.lineWidth = 1;
-    // Left whiskers
-    ctx.beginPath();
-    ctx.moveTo(-11, 2); ctx.lineTo(-24, 0);
-    ctx.moveTo(-12, 3.5); ctx.lineTo(-25, 4);
-    ctx.moveTo(-11, 5); ctx.lineTo(-22, 8);
-    // Right whiskers
-    ctx.moveTo(11, 2); ctx.lineTo(24, 0);
-    ctx.moveTo(12, 3.5); ctx.lineTo(25, 4);
-    ctx.moveTo(11, 5); ctx.lineTo(22, 8);
-    ctx.stroke();
+    ctx.restore(); // end cat transform
 
-    // 5. Draw Accessories
-    this.accessories.forEach(acc => {
-      if (acc === 'collar') {
-        // Red collar around neck
-        ctx.strokeStyle = '#e84118';
-        ctx.lineWidth = 3.5;
-        ctx.beginPath();
-        ctx.ellipse(0, 11, 10, 4, 0.1, 0.2, Math.PI * 0.8);
-        ctx.stroke();
-
-        // Golden bell
-        ctx.fillStyle = '#fbc531';
-        ctx.beginPath();
-        ctx.arc(3, 15, 3, 0, Math.PI * 2);
-        ctx.fill();
-        
-      } else if (acc === 'ribbon') {
-        // Cute red bow under head
-        ctx.fillStyle = '#ff4757';
-        ctx.beginPath();
-        // Left loop
-        ctx.moveTo(0, 12);
-        ctx.lineTo(-8, 7);
-        ctx.lineTo(-8, 17);
-        ctx.closePath();
-        // Right loop
-        ctx.moveTo(0, 12);
-        ctx.lineTo(8, 7);
-        ctx.lineTo(8, 17);
-        ctx.closePath();
-        ctx.fill();
-
-        // Center knot
-        ctx.fillStyle = '#ff6b81';
-        ctx.beginPath();
-        ctx.arc(0, 12, 3.5, 0, Math.PI * 2);
-        ctx.fill();
-
-      } else if (acc === 'hat') {
-        // Cute Wizard hat on top of head
-        ctx.save();
-        ctx.translate(0, -14);
-        ctx.rotate(-0.06);
-
-        // Hat Brim
-        ctx.fillStyle = '#3f313a'; // dark purple
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 14, 3.5, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Hat Cone
-        ctx.fillStyle = '#4834d4'; // deep purple blue
-        ctx.beginPath();
-        ctx.moveTo(-8, -1);
-        ctx.quadraticCurveTo(-1, -12, -2, -26); // curved tip
-        ctx.lineTo(5, -1);
-        ctx.closePath();
-        ctx.fill();
-
-        // Tiny gold star/circle on hat
-        ctx.fillStyle = '#f9ca24';
-        ctx.beginPath();
-        ctx.arc(-1, -12, 2, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.restore();
-
-      } else if (acc === 'glasses') {
-        // Heart glasses
-        ctx.strokeStyle = '#ff4757';
-        ctx.fillStyle = 'rgba(255, 71, 87, 0.15)';
-        ctx.lineWidth = 2;
-
-        // Left heart lens
-        ctx.beginPath();
-        ctx.moveTo(-9, -5);
-        ctx.bezierCurveTo(-12, -8, -12, -2, -9, 0);
-        ctx.bezierCurveTo(-6, -2, -6, -8, -9, -5);
-        ctx.stroke();
-        ctx.fill();
-
-        // Right heart lens
-        ctx.beginPath();
-        ctx.moveTo(1, -5);
-        ctx.bezierCurveTo(-2, -8, -2, -2, 1, 0);
-        ctx.bezierCurveTo(4, -2, 4, -8, 1, -5);
-        ctx.stroke();
-        ctx.fill();
-
-        // Bridge line
-        ctx.beginPath();
-        ctx.moveTo(-6, -3);
-        ctx.lineTo(0, -3);
-        ctx.stroke();
-      }
-    });
-
-    ctx.restore(); // end Head
-
-    // Draw Names (above head)
-    ctx.restore(); // end Translate to Cat X, Y
-    
-    // Draw Name text overlay
+    // Draw Name text overlay (always in screen space, not flipped)
     ctx.save();
     ctx.fillStyle = '#2f3542';
-    ctx.font = '500 12px "Outfit", sans-serif';
+    ctx.font = `500 ${Math.max(11, 12 * this.scale)}px "Outfit", sans-serif`;
     ctx.textAlign = 'center';
     ctx.shadowColor = 'rgba(255,255,255,0.85)';
     ctx.shadowBlur = 4;
-    
-    // Render Stats or State icon above name if being pet
+
     let displayName = this.name;
     if (this.state === 'sleep') displayName = '💤 ' + this.name;
     else if (this.state === 'eat') displayName = '🍲 ' + this.name;
     else if (this.state === 'play') displayName = '🎾 ' + this.name;
 
-    ctx.fillText(displayName, this.x, this.y - this.height * this.scale - 20);
+    ctx.fillText(displayName, this.x, this.y - renderH - 8);
     ctx.restore();
 
     // Render rising hearts
@@ -971,11 +616,10 @@ export class Cat {
       ctx.save();
       ctx.fillStyle = `rgba(255, 107, 129, ${h.alpha})`;
       ctx.translate(h.x, h.y);
-      // Draw small heart shape
       ctx.beginPath();
       ctx.moveTo(0, 0);
-      ctx.bezierCurveTo(-h.size/2, -h.size/2, -h.size, h.size/3, 0, h.size);
-      ctx.bezierCurveTo(h.size, h.size/3, h.size/2, -h.size/2, 0, 0);
+      ctx.bezierCurveTo(-h.size / 2, -h.size / 2, -h.size, h.size / 3, 0, h.size);
+      ctx.bezierCurveTo(h.size, h.size / 3, h.size / 2, -h.size / 2, 0, 0);
       ctx.fill();
       ctx.restore();
     });
@@ -983,7 +627,7 @@ export class Cat {
     // Render rising stars
     this.stars.forEach(s => {
       ctx.save();
-      ctx.fillStyle = `rgba(253, 203, 110, ${s.alpha})`; // warm yellow
+      ctx.fillStyle = `rgba(253, 203, 110, ${s.alpha})`;
       ctx.translate(s.x, s.y);
       ctx.font = `${s.size}px "Outfit", sans-serif`;
       ctx.textAlign = 'center';
@@ -993,17 +637,101 @@ export class Cat {
     });
   }
 
+  // Draw accessories as simple overlays on the sprite
+  drawAccessories(ctx, renderW, renderH) {
+    const s = this.scale;
+    
+    this.accessories.forEach(acc => {
+      if (acc === 'collar') {
+        // Red collar near the neck area
+        ctx.strokeStyle = '#e84118';
+        ctx.lineWidth = 3 * s;
+        ctx.beginPath();
+        ctx.ellipse(0, -renderH * 0.35, renderW * 0.2, 4 * s, 0, 0.2, Math.PI * 0.8);
+        ctx.stroke();
+        // Golden bell
+        ctx.fillStyle = '#fbc531';
+        ctx.beginPath();
+        ctx.arc(3 * s, -renderH * 0.32, 3 * s, 0, Math.PI * 2);
+        ctx.fill();
+
+      } else if (acc === 'ribbon') {
+        const ry = -renderH * 0.38;
+        ctx.fillStyle = '#ff4757';
+        ctx.beginPath();
+        ctx.moveTo(0, ry);
+        ctx.lineTo(-8 * s, ry - 5 * s);
+        ctx.lineTo(-8 * s, ry + 5 * s);
+        ctx.closePath();
+        ctx.moveTo(0, ry);
+        ctx.lineTo(8 * s, ry - 5 * s);
+        ctx.lineTo(8 * s, ry + 5 * s);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#ff6b81';
+        ctx.beginPath();
+        ctx.arc(0, ry, 3.5 * s, 0, Math.PI * 2);
+        ctx.fill();
+
+      } else if (acc === 'hat') {
+        const hy = -renderH * 0.85;
+        ctx.save();
+        ctx.translate(0, hy);
+        ctx.rotate(-0.06);
+        // Brim
+        ctx.fillStyle = '#3f313a';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 14 * s, 3.5 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Cone
+        ctx.fillStyle = '#4834d4';
+        ctx.beginPath();
+        ctx.moveTo(-8 * s, -1);
+        ctx.quadraticCurveTo(-1 * s, -12 * s, -2 * s, -26 * s);
+        ctx.lineTo(5 * s, -1);
+        ctx.closePath();
+        ctx.fill();
+        // Star
+        ctx.fillStyle = '#f9ca24';
+        ctx.beginPath();
+        ctx.arc(-1 * s, -12 * s, 2 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+      } else if (acc === 'glasses') {
+        const gy = -renderH * 0.62;
+        ctx.strokeStyle = '#ff4757';
+        ctx.fillStyle = 'rgba(255, 71, 87, 0.15)';
+        ctx.lineWidth = 2 * s;
+        // Left lens
+        ctx.beginPath();
+        ctx.arc(-5 * s, gy, 5 * s, 0, Math.PI * 2);
+        ctx.stroke(); ctx.fill();
+        // Right lens
+        ctx.beginPath();
+        ctx.arc(5 * s, gy, 5 * s, 0, Math.PI * 2);
+        ctx.stroke(); ctx.fill();
+        // Bridge
+        ctx.beginPath();
+        ctx.moveTo(-1 * s, gy);
+        ctx.lineTo(1 * s, gy);
+        ctx.stroke();
+      }
+    });
+  }
+
   // Check if click coordinates hit the cat body bounds (scaled proportionally)
   isClicked(mx, my) {
-    const w = this.width * this.scale;
-    const h = this.height * this.scale;
-    const rx = this.x - w / 2;
-    const ry = this.y - h - 10 * this.scale;
+    // Use sprite render dimensions for hitbox
+    const spriteH = 70 * this.scale;
+    const spriteW = 60 * this.scale; // approximate width
+    const rx = this.x - spriteW / 2;
+    const ry = this.y - spriteH;
     return (
       mx >= rx &&
-      mx <= rx + w &&
+      mx <= rx + spriteW &&
       my >= ry &&
-      my <= ry + h + 15 * this.scale
+      my <= ry + spriteH + 5 * this.scale
     );
   }
 

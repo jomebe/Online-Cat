@@ -3,6 +3,7 @@ import { initAudio, playMeow, playChime, startAmbient, stopAmbient, toggleMute, 
 import { initEnvironment, updateEnvironment, drawBackground, drawEnvironmentParticles, getTimeOfDay, setEnvironmentTime } from './canvas.js';
 import { Cat } from './cat.js';
 import { Toy, drawLaserDot } from './toy.js';
+import { loadAllSprites } from './spriteLoader.js';
 
 // Application State
 const state = {
@@ -899,6 +900,18 @@ expandLogBtn.addEventListener('click', (e) => {
   playChime();
 });
 
-// Start loop
-requestAnimationFrame(loop);
-addLog('모카, 코코, 라떼 세 고양이가 한가롭게 노닐고 있습니다. 쓰다듬어보세요!');
+// Load sprites then start the game loop
+async function initGame() {
+  addLog('🎨 스프라이트를 불러오는 중...');
+  try {
+    await loadAllSprites();
+    addLog('✅ 고양이 스프라이트 로딩 완료!');
+  } catch (err) {
+    console.warn('Sprite loading failed, using fallback:', err);
+    addLog('⚠️ 스프라이트 로딩 실패 - 기본 모드로 실행합니다.');
+  }
+  requestAnimationFrame(loop);
+  addLog('모카, 코코, 라떼 세 고양이가 한가롭게 노닐고 있습니다. 쓰다듬어보세요!');
+}
+
+initGame();
