@@ -643,6 +643,16 @@ settingsBtn.addEventListener('click', (e) => {
   settingsPanel.classList.toggle('hidden');
 });
 
+// Minimal Observation Mode exit handler
+document.getElementById('exit-obs-btn').addEventListener('click', () => {
+  const observedCat = state.cats.find(c => c.observationMode);
+  if (observedCat) {
+    observedCat.observationMode = false;
+    addLog(`🏡 <strong>${observedCat.name}</strong>(이)가 다시 방으로 돌아갔습니다.`);
+    playChime();
+  }
+});
+
 const muteBtn = document.getElementById('mute-btn');
 muteBtn.addEventListener('click', () => {
   state.isMuted = !state.isMuted;
@@ -847,6 +857,20 @@ function loop(timestamp) {
 
   // 8. Update UI displays
   updateDetailsBars();
+
+  // Track and manage observation mode HUD
+  const observedCat = state.cats.find(c => c.observationMode);
+  const obsHud = document.getElementById('observation-hud');
+  if (observedCat) {
+    document.body.classList.add('observation-active');
+    document.getElementById('obs-cat-name').textContent = observedCat.name;
+    document.getElementById('obs-bar-affection').style.width = observedCat.affection + '%';
+    document.getElementById('obs-bar-energy').style.width = observedCat.energy + '%';
+    obsHud.classList.add('active');
+  } else {
+    document.body.classList.remove('observation-active');
+    obsHud.classList.remove('active');
+  }
   
   // Track and log actions
   trackCatStates();

@@ -15,6 +15,24 @@
     <!-- Guide hint -->
     <div id="pet-indicator" class="pet-indicator">🐾 마우스로 고양이를 쓰다듬어(Pet) 보세요!</div>
 
+    <!-- Minimal Observation HUD -->
+    <div id="observation-hud" class="observation-hud">
+      <div class="obs-info">
+        <span class="obs-title">🔍 관찰 모드: <strong id="obs-cat-name">고양이</strong></span>
+        <div class="obs-stats">
+          <div class="obs-stat-item">
+            <span>💖 친밀도</span>
+            <div class="obs-bar-bg"><div id="obs-bar-affection" class="obs-bar-fill affection"></div></div>
+          </div>
+          <div class="obs-stat-item">
+            <span>⚡ 에너지</span>
+            <div class="obs-bar-bg"><div id="obs-bar-energy" class="obs-bar-fill energy"></div></div>
+          </div>
+        </div>
+      </div>
+      <button id="exit-obs-btn" class="exit-obs-btn">🏡 방으로 보내기</button>
+    </div>
+
     <!-- Header Section -->
     <header class="glass-panel">
       <div class="logo-section">

@@ -624,6 +624,139 @@ button.icon-btn:active {
   100% { opacity: 0.4; }
 }
 
+/* --- Immersive Observation Mode UI --- */
+
+/* Smooth transitions for UI overlays fading out */
+header, .activity-log, .toy-box, .cat-details-card, .sidebar, .pet-indicator {
+  transition: opacity 0.35s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1), right 0.4s ease, left 0.4s ease, top 0.3s ease;
+}
+
+/* Hide room UI overlays when observation mode is active */
+.observation-active header,
+.observation-active .activity-log,
+.observation-active .toy-box,
+.observation-active .cat-details-card,
+.observation-active .sidebar,
+.observation-active .pet-indicator {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(25px) !important;
+}
+
+.observation-active header {
+  transform: translateY(-25px) !important; /* slide up instead of down */
+}
+
+/* Settings panel override */
+.observation-active .settings-panel {
+  display: none !important;
+}
+
+/* Floating Translucent Pill HUD for Observation Mode */
+.observation-hud {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  right: 20px;
+  z-index: 100;
+  padding: 10px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+  transform: translateY(-30px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.15), opacity 0.4s ease;
+}
+
+.observation-hud.active {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.obs-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.obs-title {
+  font-family: var(--font-title);
+  font-size: 14px;
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.obs-stats {
+  display: flex;
+  gap: 14px;
+}
+
+.obs-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-dark);
+}
+
+.obs-bar-bg {
+  width: 65px;
+  height: 7px;
+  background: rgba(0, 0, 0, 0.09);
+  border-radius: 4px;
+  overflow: hidden;
+  display: inline-block;
+}
+
+.obs-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.obs-bar-fill.affection {
+  background: var(--accent);
+  box-shadow: 0 0 4px rgba(255, 107, 129, 0.4);
+}
+
+.obs-bar-fill.energy {
+  background: #4cd137;
+  box-shadow: 0 0 4px rgba(76, 209, 55, 0.4);
+}
+
+.exit-obs-btn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 7px 16px;
+  border-radius: 20px;
+  font-family: var(--font-title);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(255, 107, 129, 0.3);
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.2s ease;
+}
+
+.exit-obs-btn:hover {
+  background: #ff526c;
+  transform: scale(1.05);
+}
+
+.exit-obs-btn:active {
+  transform: scale(0.95);
+}
+
 /* Responsive adjustments & Touch Optimizations */
 canvas, button, .toy-item, .cat-details-card, .sidebar, .settings-panel {
   touch-action: manipulation;
@@ -714,5 +847,39 @@ canvas, button, .toy-item, .cat-details-card, .sidebar, .settings-panel {
     width: auto !important;
     height: 240px !important;
     bottom: 100px;
+  }
+
+  /* Minimal HUD mobile styles */
+  .observation-hud {
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    padding: 8px 12px;
+    gap: 8px;
+    border-radius: 20px;
+  }
+  
+  .obs-title {
+    font-size: 12px;
+  }
+  
+  .obs-stats {
+    gap: 8px;
+  }
+  
+  .obs-stat-item {
+    font-size: 10px;
+    gap: 3px;
+  }
+  
+  .obs-bar-bg {
+    width: 45px;
+    height: 6px;
+  }
+  
+  .exit-obs-btn {
+    padding: 5px 12px;
+    font-size: 11px;
+    border-radius: 15px;
   }
 }
