@@ -264,10 +264,19 @@ export class Cat {
   chooseNewState(toys, canvasWidth) {
     // 1. Check hunger
     if (this.hunger > 60) {
-      const food = toys.find(t => t.type === 'treat' && t.bites > 0 && !t.isDragging);
-      if (food) {
+      const foods = toys.filter(t => t.type === 'treat' && t.bites > 0 && !t.isDragging);
+      if (foods.length > 0) {
+        let closestFood = foods[0];
+        let minDist = Math.abs(this.x - closestFood.x);
+        for (let i = 1; i < foods.length; i++) {
+          const dist = Math.abs(this.x - foods[i].x);
+          if (dist < minDist) {
+            minDist = dist;
+            closestFood = foods[i];
+          }
+        }
         this.state = 'eat';
-        this.targetToy = food;
+        this.targetToy = closestFood;
         this.stateTimer = 10;
         return;
       }
@@ -276,10 +285,19 @@ export class Cat {
     // 2. Check energy (sleepy)
     if (this.energy < 20) {
       // Find an unoccupied cardboard box
-      const box = toys.find(t => t.type === 'box' && !t.isDragging && !t.claimedBy);
-      if (box && !this.inBox) {
-        this.inBox = box;
-        box.claimedBy = this.id;
+      const boxes = toys.filter(t => t.type === 'box' && !t.isDragging && !t.claimedBy);
+      if (boxes.length > 0 && !this.inBox) {
+        let closestBox = boxes[0];
+        let minDist = Math.abs(this.x - closestBox.x);
+        for (let i = 1; i < boxes.length; i++) {
+          const dist = Math.abs(this.x - boxes[i].x);
+          if (dist < minDist) {
+            minDist = dist;
+            closestBox = boxes[i];
+          }
+        }
+        this.inBox = closestBox;
+        closestBox.claimedBy = this.id;
         this.state = 'sleep';
         this.stateTimer = 15 + Math.random() * 10;
         return;
@@ -293,10 +311,19 @@ export class Cat {
 
     // 3. Play if energized and yarn exists
     if (this.energy > 40 && Math.random() < 0.5) {
-      const yarn = toys.find(t => t.type === 'yarn' && !t.isDragging);
-      if (yarn) {
+      const yarns = toys.filter(t => t.type === 'yarn' && !t.isDragging);
+      if (yarns.length > 0) {
+        let closestYarn = yarns[0];
+        let minDist = Math.abs(this.x - closestYarn.x);
+        for (let i = 1; i < yarns.length; i++) {
+          const dist = Math.abs(this.x - yarns[i].x);
+          if (dist < minDist) {
+            minDist = dist;
+            closestYarn = yarns[i];
+          }
+        }
         this.state = 'play';
-        this.targetToy = yarn;
+        this.targetToy = closestYarn;
         this.stateTimer = 8;
         return;
       }

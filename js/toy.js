@@ -140,91 +140,130 @@ export class Toy {
       const x = -w / 2;
       const y = -h;
 
+      // Dark brown cartoon outline color for visibility
+      const strokeColor = '#4e3629';
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = 2.5;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+
       if (isBehindCat) {
         // Draw shadow under box
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
         ctx.beginPath();
-        ctx.ellipse(0, 0, w * 0.55, 6, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, 0, w * 0.58, 8, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // Inside back wall of the box
-        ctx.fillStyle = '#b08b62'; // darker cardboard
+        ctx.fillStyle = '#8b6c4b'; 
         ctx.fillRect(x + 4, y + 4, w - 8, h - 8);
+        ctx.strokeRect(x + 4, y + 4, w - 8, h - 8);
 
-        // Left wall, Right wall, Bottom wall (inside view)
-        ctx.fillStyle = '#a6825a';
+        // Left inside wall
+        ctx.fillStyle = '#785b3e';
         ctx.beginPath();
         ctx.moveTo(x + 4, y + 4);
-        ctx.lineTo(x + 10, y + 10);
-        ctx.lineTo(x + 10, 0 - 6);
+        ctx.lineTo(x + 12, y + 12);
+        ctx.lineTo(x + 12, -8);
         ctx.lineTo(x + 4, 0);
+        ctx.closePath();
         ctx.fill();
+        ctx.stroke();
 
+        // Right inside wall
         ctx.beginPath();
         ctx.moveTo(x + w - 4, y + 4);
-        ctx.lineTo(x + w - 10, y + 10);
-        ctx.lineTo(x + w - 10, 0 - 6);
+        ctx.lineTo(x + w - 12, y + 12);
+        ctx.lineTo(x + w - 12, -8);
         ctx.lineTo(x + w - 4, 0);
+        ctx.closePath();
         ctx.fill();
+        ctx.stroke();
+
+        // Inside bottom
+        ctx.fillStyle = '#6e5135';
+        ctx.beginPath();
+        ctx.moveTo(x + 12, y + 12);
+        ctx.lineTo(x + w - 12, y + 12);
+        ctx.lineTo(x + w - 12, -8);
+        ctx.lineTo(x + 12, -8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
 
         // Box flaps (open back flap)
-        ctx.fillStyle = '#b8946c';
+        ctx.fillStyle = '#a8835d';
         ctx.beginPath();
         ctx.moveTo(x + 4, y + 4);
-        ctx.lineTo(x + w * 0.1, y - h * 0.3);
-        ctx.lineTo(x + w * 0.9, y - h * 0.3);
+        ctx.lineTo(x + w * 0.1, y - h * 0.35);
+        ctx.lineTo(x + w * 0.9, y - h * 0.35);
         ctx.lineTo(x + w - 4, y + 4);
+        ctx.closePath();
         ctx.fill();
+        ctx.stroke();
         
       } else {
         // Front flaps and outer walls
-        ctx.fillStyle = '#cda37b'; // lighter outer cardboard
+        ctx.fillStyle = '#d7b58e'; // lighter outer cardboard for contrast
         
         // Front wall
         ctx.fillRect(x, y + 10, w, h - 10);
-
-        // Highlight top rim
-        ctx.fillStyle = '#e4bc93';
-        ctx.fillRect(x, y + 10, w, 2.5);
+        ctx.strokeRect(x, y + 10, w, h - 10);
 
         // Open Side Flaps
-        ctx.fillStyle = '#b8946c';
+        ctx.fillStyle = '#c29d74';
+        
         // Left Flap
         ctx.beginPath();
         ctx.moveTo(x, y + 10);
-        ctx.lineTo(x - w * 0.25, y - h * 0.1);
-        ctx.lineTo(x - w * 0.25, y + h * 0.4);
+        ctx.lineTo(x - w * 0.28, y - h * 0.12);
+        ctx.lineTo(x - w * 0.28, y + h * 0.38);
         ctx.lineTo(x, y + h * 0.5);
+        ctx.closePath();
         ctx.fill();
+        ctx.stroke();
 
         // Right Flap
         ctx.beginPath();
         ctx.moveTo(x + w, y + 10);
-        ctx.lineTo(x + w + w * 0.25, y - h * 0.1);
-        ctx.lineTo(x + w + w * 0.25, y + h * 0.4);
+        ctx.lineTo(x + w + w * 0.28, y - h * 0.12);
+        ctx.lineTo(x + w + w * 0.28, y + h * 0.38);
         ctx.lineTo(x + w, y + h * 0.5);
+        ctx.closePath();
         ctx.fill();
+        ctx.stroke();
 
         // Front Flap (folded down towards user)
-        ctx.fillStyle = '#c29b72';
+        ctx.fillStyle = '#bd9970';
         ctx.beginPath();
-        ctx.moveTo(x, y + h - 2);
-        ctx.lineTo(x + w * 0.1, y + h + h * 0.25);
-        ctx.lineTo(x + w * 0.9, y + h + h * 0.25);
-        ctx.lineTo(x + w, y + h - 2);
+        ctx.moveTo(x + 2, y + h - 2);
+        ctx.lineTo(x + w * 0.1, y + h + h * 0.28);
+        ctx.lineTo(x + w * 0.9, y + h + h * 0.28);
+        ctx.lineTo(x + w - 2, y + h - 2);
+        ctx.closePath();
         ctx.fill();
+        ctx.stroke();
 
         // Box Logo (cute cat face print on box side)
-        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        ctx.strokeStyle = '#4e3629';
+        ctx.fillStyle = '#4e3629';
+        ctx.lineWidth = 1.8;
         const logoY = y + h * 0.6;
         ctx.beginPath();
-        ctx.arc(-10, logoY, 4, 0, Math.PI * 2);
-        ctx.arc(10, logoY, 4, 0, Math.PI * 2);
+        ctx.arc(-12, logoY, 3, 0, Math.PI * 2);
+        ctx.arc(12, logoY, 3, 0, Math.PI * 2);
         ctx.fill();
+        
         ctx.beginPath();
-        ctx.moveTo(-15, logoY - 5); ctx.lineTo(-8, logoY - 12); ctx.lineTo(-3, logoY - 5);
-        ctx.moveTo(15, logoY - 5); ctx.lineTo(8, logoY - 12); ctx.lineTo(3, logoY - 5);
-        ctx.moveTo(-3, logoY + 1); ctx.quadraticCurveTo(0, logoY + 4, 3, logoY + 1);
+        // Left ear
+        ctx.moveTo(-17, logoY - 4); ctx.lineTo(-11, logoY - 11); ctx.lineTo(-7, logoY - 4);
+        // Right ear
+        ctx.moveTo(17, logoY - 4); ctx.lineTo(11, logoY - 11); ctx.lineTo(7, logoY - 4);
+        ctx.stroke();
+        
+        // Mouth
+        ctx.beginPath();
+        ctx.moveTo(-3, logoY + 1); ctx.quadraticCurveTo(0, logoY + 3, 3, logoY + 1);
         ctx.stroke();
       }
 

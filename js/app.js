@@ -74,12 +74,9 @@ function addLog(text) {
   logContent.scrollTop = logContent.scrollHeight;
 }
 
-// Map Cat states for logging
+// Map Cat states for logging (only major events to prevent spam)
 const stateLogMap = {
   'sleep': '💤 낮잠을 자기 시작했습니다.',
-  'sit': '🐾 자리에 앉아 얌전히 쉬는 중입니다.',
-  'idle': '👀 주변을 기웃거리며 탐색 중입니다.',
-  'walk': '🚶 방 안을 한가로이 거닐고 있습니다.',
   'eat': '🍲 물고기 간식을 맛있게 냠냠 먹고 있습니다.',
   'play': '🧶 신나게 털실 뭉치를 굴리며 놀고 있습니다.',
   'pet': '❤️ 골골송을 부르며 기분 좋게 애교를 부립니다.'
@@ -93,9 +90,13 @@ function trackCatStates() {
     const prevState = catPreviousStates[cat.id];
     if (prevState !== cat.state) {
       catPreviousStates[cat.id] = cat.state;
-      // Skip logging basic transitions to avoid clutter, focus on major ones
+      // Log only interesting major interactions
       if (stateLogMap[cat.state]) {
-        addLog(`<strong>${cat.name}</strong>(이)가 ${stateLogMap[cat.state]}`);
+        let msg = stateLogMap[cat.state];
+        if (cat.state === 'sleep' && cat.inBox) {
+          msg = '📦 골판지 상자 속으로 쏙 들어가서 낮잠을 잡니다. zZ';
+        }
+        addLog(`<strong>${cat.name}</strong>(이)가 ${msg}`);
       }
     }
   });
@@ -645,6 +646,20 @@ window.addEventListener('click', (e) => {
   if (!sidebar.contains(e.target) && !toggleCreatorBtn.contains(e.target)) {
     sidebar.classList.remove('open');
   }
+});
+
+// Expand Log panel button listener
+const expandLogBtn = document.getElementById('expand-log-btn');
+const activityLogPanel = document.getElementById('activity-log');
+expandLogBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  activityLogPanel.classList.toggle('expanded');
+  if (activityLogPanel.classList.contains('expanded')) {
+    expandLogBtn.textContent = '🗕';
+  } else {
+    expandLogBtn.textContent = '↕️';
+  }
+  playChime();
 });
 
 // Start loop

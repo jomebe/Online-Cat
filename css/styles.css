@@ -156,13 +156,14 @@ button.icon-btn:active {
   top: 110px;
   right: -360px;
   width: 320px;
-  height: calc(100vh - 130px);
-  z-index: 10;
+  height: calc(100vh - 150px);
+  z-index: 15;
   padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   transition: right 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  overflow-y: auto;
 }
 
 .sidebar.open {
@@ -280,7 +281,6 @@ button.icon-btn:active {
   transform: translateY(0);
 }
 
-/* Activity Log Panel */
 .activity-log {
   position: absolute;
   bottom: 20px;
@@ -292,6 +292,13 @@ button.icon-btn:active {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  transition: width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), height 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.activity-log.expanded {
+  width: 450px;
+  height: 380px;
+  z-index: 14;
 }
 
 .activity-log h3 {
