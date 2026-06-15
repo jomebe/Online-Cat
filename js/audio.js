@@ -9,6 +9,8 @@ let purrGainNode = null;
 let currentAmbientType = 'none'; // 'none', 'rain', 'wind'
 let isMuted = false;
 
+let ambientVolume = 0.15; // default volume state
+
 // Initialize Audio Context on first interaction
 export function initAudio() {
   if (audioCtx) return;
@@ -19,7 +21,7 @@ export function initAudio() {
   
   // Create master gain for ambient
   ambientGainNode = audioCtx.createGain();
-  ambientGainNode.gain.value = 0.15;
+  ambientGainNode.gain.setValueAtTime(ambientVolume, audioCtx.currentTime);
   ambientGainNode.connect(audioCtx.destination);
   
   // Setup purring gain node
@@ -327,7 +329,8 @@ export function toggleMute(muted) {
 
 // Set Ambient Volume
 export function setAmbientVolume(vol) {
-  if (ambientGainNode) {
-    ambientGainNode.gain.value = vol;
+  ambientVolume = vol;
+  if (ambientGainNode && audioCtx) {
+    ambientGainNode.gain.setValueAtTime(vol, audioCtx.currentTime);
   }
 }
