@@ -155,7 +155,10 @@ export class Cat {
     // Set height based on floor level, box, or observation mode
     const baseFloorY = floorY - 5;
     if (this.observationMode) {
-      this.y = height - 12; // Snap sitting Y to the very bottom
+      const floorHeight = height * 0.38;
+      const rugY = floorY + floorHeight * 0.35;
+      const rugH = height * 0.15;
+      this.y = rugY + rugH * 0.8; // Align cat feet on the cozy rug/carpet
       this.vx = 0;
       this.vy = 0;
       
