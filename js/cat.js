@@ -115,16 +115,30 @@ export class Cat {
     // Check Laser Pointer (takes top priority if cat is awake)
     if (laser.active && this.state !== 'sleep') {
       this.inBox = null; // get out of box to play!
-      this.state = 'play';
-      this.targetToy = null;
-      this.targetX = laser.x;
-      this.direction = this.targetX > this.x ? 1 : -1;
       
-      // Run towards laser
-      const speed = 2.8;
+      // Initialize reaction timer if not set (makes them watch it for a moment first)
+      if (this.laserReactTimer === undefined || this.laserReactTimer === null) {
+        this.laserReactTimer = 0.6 + Math.random() * 1.0; // 0.6 to 1.6 seconds delay
+      }
+
+      this.direction = laser.x > this.x ? 1 : -1;
+      this.targetToy = null;
+      this.vx = 0;
+
+      if (this.laserReactTimer > 0) {
+        // Look at the laser in curiosity
+        this.laserReactTimer -= delta;
+        this.state = 'idle';
+        return;
+      }
+
+      // Chase laser
+      this.state = 'play';
+      const speed = 2.6;
       const dist = Math.abs(this.x - laser.x);
       if (dist > 15) {
         this.vx = this.direction * speed;
+        this.x += this.vx; // Actually move the cat!
       } else {
         this.vx = 0;
         // Pounce/pat animation triggers meow occasionally
@@ -133,6 +147,9 @@ export class Cat {
         }
       }
       return;
+    } else {
+      // Reset reaction timer when laser is off
+      this.laserReactTimer = null;
     }
 
     // AI Logic
