@@ -331,6 +331,26 @@ function splitIntoFrames(processed, cols, rows, count) {
   return frames;
 }
 
+/** Split ginger's hybrid layout (Row 1: 3 cols, Row 2: 2 cols) */
+function splitGingerHybrid(processed, count) {
+  const frames = [];
+  const rh = processed.height / 2;
+  
+  // Row 1: 3 columns (width 341.33 each)
+  const cw1 = processed.width / 3;
+  for (let c = 0; c < 3 && frames.length < count; c++) {
+    frames.push(extractFrame(processed, c * cw1, 0, cw1, rh));
+  }
+  
+  // Row 2: 2 columns (width 512 each)
+  const cw2 = processed.width / 2;
+  for (let c = 0; c < 2 && frames.length < count; c++) {
+    frames.push(extractFrame(processed, c * cw2, rh, cw2, rh));
+  }
+  
+  return frames;
+}
+
 /** Create a mirrored/shifted copy for 2-frame idle breathing */
 function createBreathingFrames(singleFrame) {
   // Frame 1: original
@@ -373,7 +393,12 @@ async function processBreed(breedKey) {
   // Process base sheet
   const layout = LAYOUT[spriteKey] || { cols: 2, rows: 2, count: 4 };
   const processedBase = removeWhiteBackground(baseImg);
-  const baseFrames = splitIntoFrames(processedBase, layout.cols, layout.rows, layout.count);
+  let baseFrames;
+  if (spriteKey === 'ginger') {
+    baseFrames = splitGingerHybrid(processedBase, layout.count);
+  } else {
+    baseFrames = splitIntoFrames(processedBase, layout.cols, layout.rows, layout.count);
+  }
   // baseFrames: [0]=idle/sit, [1]=walk, [2]=sleep, [3]=play
 
   // Process walk cycle strip
@@ -381,11 +406,14 @@ async function processBreed(breedKey) {
   if (walkImg) {
     const processedWalk = removeWhiteBackground(walkImg);
     const wLayout = WALK_LAYOUT[spriteKey] || { cols: 4, rows: 1, count: 4 };
-    let frames = splitIntoFrames(processedWalk, wLayout.cols, wLayout.rows, wLayout.count);
+    let frames;
     if (spriteKey === 'ginger') {
+      frames = splitGingerHybrid(processedWalk, wLayout.count);
       // Ginger walk sheet has 5 frames in a 3x2 grid, where frame 2 is the sleep pose.
       // Skip frame 2 to yield 4 walking cycle poses.
       frames = [frames[0], frames[1], frames[3], frames[4]];
+    } else {
+      frames = splitIntoFrames(processedWalk, wLayout.cols, wLayout.rows, wLayout.count);
     }
     walkFrames = frames;
   } else {
