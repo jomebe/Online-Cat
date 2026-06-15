@@ -576,13 +576,12 @@ export class Cat {
 
     // Hit state: red tint overlay
     if (this.hitTimer > 0) {
-      ctx.globalAlpha = 0.7;
       ctx.drawImage(frame, drawX, drawY, renderW, renderH);
-      ctx.globalAlpha = 1.0;
+      ctx.save();
       ctx.globalCompositeOperation = 'source-atop';
-      ctx.fillStyle = 'rgba(255, 80, 80, 0.35)';
+      ctx.fillStyle = 'rgba(255, 90, 90, 0.2)'; // Softer, lighter red tint
       ctx.fillRect(drawX, drawY, renderW, renderH);
-      ctx.globalCompositeOperation = 'source-over';
+      ctx.restore();
     } else {
       ctx.drawImage(frame, drawX, drawY, renderW, renderH);
     }

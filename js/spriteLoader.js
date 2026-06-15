@@ -29,7 +29,7 @@ const LAYOUT = {
 
 // Layout for walk animation sheets
 const WALK_LAYOUT = {
-  ginger:  { cols: 2, rows: 2, count: 4 },
+  ginger:  { cols: 3, rows: 2, count: 5 }, // Ginger walk sheet has 5 frames in a 3x2 grid
   grey:    { cols: 2, rows: 2, count: 4 },
   tuxedo:  { cols: 4, rows: 1, count: 4 },
   white:   { cols: 4, rows: 1, count: 4 },
@@ -46,7 +46,7 @@ const PET_LAYOUT = {
   white:   { cols: 2, rows: 2, count: 4 },
   calico:  { cols: 4, rows: 1, count: 4 },
   tabby:   { cols: 2, rows: 2, count: 4 },
-  siamese: { cols: 2, rows: 1, count: 2 }, // Siamese pet only has 2 frames
+  siamese: { cols: 4, rows: 1, count: 4 }, // Siamese pet sheet has 4 frames in a 4x1 grid
 };
 
 // ── Global sprite cache ──
@@ -192,9 +192,114 @@ function findBounds(ctx, rx, ry, rw, rh) {
   return { x: rx + minX, y: ry + minY, w: maxX - minX + 1, h: maxY - minY + 1 };
 }
 
+/** Trim edge bleed-in pixels from neighboring cells */
+function trimCellNoise(ctx, rx, ry, rw, rh) {
+  const imgData = ctx.getImageData(rx, ry, rw, rh);
+  const data = imgData.data;
+
+  // Helper: check if a column has no active pixels
+  const isColEmpty = (x) => {
+    for (let y = 0; y < rh; y++) {
+      if (data[(y * rw + x) * 4 + 3] > 15) return false;
+    }
+    return true;
+  };
+
+  // Helper: check if a row has no active pixels
+  const isRowEmpty = (y) => {
+    for (let x = 0; x < rw; x++) {
+      if (data[(y * rw + x) * 4 + 3] > 15) return false;
+    }
+    return true;
+  };
+
+  // 1. Scan from left edge inward (up to 30% of width)
+  let leftCut = 0;
+  let hasSeenPixelsLeft = false;
+  const maxScanW = Math.floor(rw * 0.3);
+  for (let x = 0; x < maxScanW; x++) {
+    const empty = isColEmpty(x);
+    if (!empty) {
+      hasSeenPixelsLeft = true;
+    } else if (empty && hasSeenPixelsLeft) {
+      leftCut = x;
+    }
+  }
+  if (leftCut > 0) {
+    for (let x = 0; x < leftCut; x++) {
+      for (let y = 0; y < rh; y++) {
+        data[(y * rw + x) * 4 + 3] = 0;
+      }
+    }
+  }
+
+  // 2. Scan from right edge inward (up to 30% of width)
+  let rightCut = rw - 1;
+  let hasSeenPixelsRight = false;
+  const minScanW = Math.ceil(rw * 0.7);
+  for (let x = rw - 1; x >= minScanW; x--) {
+    const empty = isColEmpty(x);
+    if (!empty) {
+      hasSeenPixelsRight = true;
+    } else if (empty && hasSeenPixelsRight) {
+      rightCut = x;
+    }
+  }
+  if (rightCut < rw - 1) {
+    for (let x = rightCut + 1; x < rw; x++) {
+      for (let y = 0; y < rh; y++) {
+        data[(y * rw + x) * 4 + 3] = 0;
+      }
+    }
+  }
+
+  // 3. Scan from top edge inward (up to 25% of height)
+  let topCut = 0;
+  let hasSeenPixelsTop = false;
+  const maxScanH = Math.floor(rh * 0.25);
+  for (let y = 0; y < maxScanH; y++) {
+    const empty = isRowEmpty(y);
+    if (!empty) {
+      hasSeenPixelsTop = true;
+    } else if (empty && hasSeenPixelsTop) {
+      topCut = y;
+    }
+  }
+  if (topCut > 0) {
+    for (let y = 0; y < topCut; y++) {
+      for (let x = 0; x < rw; x++) {
+        data[(y * rw + x) * 4 + 3] = 0;
+      }
+    }
+  }
+
+  // 4. Scan from bottom edge inward (up to 25% of height)
+  let bottomCut = rh - 1;
+  let hasSeenPixelsBottom = false;
+  const minScanH = Math.ceil(rh * 0.75);
+  for (let y = rh - 1; y >= minScanH; y--) {
+    const empty = isRowEmpty(y);
+    if (!empty) {
+      hasSeenPixelsBottom = true;
+    } else if (empty && hasSeenPixelsBottom) {
+      bottomCut = y;
+    }
+  }
+  if (bottomCut < rh - 1) {
+    for (let y = bottomCut + 1; y < rh; y++) {
+      for (let x = 0; x < rw; x++) {
+        data[(y * rw + x) * 4 + 3] = 0;
+      }
+    }
+  }
+
+  ctx.putImageData(imgData, rx, ry);
+}
+
 /** Extract a single cropped frame from a processed canvas */
 function extractFrame(processed, rx, ry, rw, rh) {
   const ctx = processed.getContext('2d');
+  trimCellNoise(ctx, rx, ry, rw, rh);
   const b = findBounds(ctx, rx, ry, rw, rh);
   const pad = 2;
   const sx = Math.max(0, b.x - pad);
@@ -271,7 +376,13 @@ async function processBreed(breedKey) {
   if (walkImg) {
     const processedWalk = removeWhiteBackground(walkImg);
     const wLayout = WALK_LAYOUT[spriteKey] || { cols: 4, rows: 1, count: 4 };
-    walkFrames = splitIntoFrames(processedWalk, wLayout.cols, wLayout.rows, wLayout.count);
+    let frames = splitIntoFrames(processedWalk, wLayout.cols, wLayout.rows, wLayout.count);
+    if (spriteKey === 'ginger') {
+      // Ginger walk sheet has 5 frames in a 3x2 grid, where frame 2 is the sleep pose.
+      // Skip frame 2 to yield 4 walking cycle poses.
+      frames = [frames[0], frames[1], frames[3], frames[4]];
+    }
+    walkFrames = frames;
   } else {
     // Fallback: use single walk frame repeated
     walkFrames = [baseFrames[1] || baseFrames[0]];

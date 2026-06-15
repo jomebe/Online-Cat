@@ -763,7 +763,7 @@ function loop(timestamp) {
   state.toys.forEach(toy => {
     if (toy.type === 'yarn' && !toy.isDragging) {
       const speed = Math.hypot(toy.vx, toy.vy);
-      if (speed > 2.0) { // flying fast enough
+      if (speed > 8.0) { // flying fast enough (throw speed)
         state.cats.forEach(cat => {
           if (!cat.isDragging && !cat.observationMode && (!cat.hitTimer || cat.hitTimer <= 0)) {
             const catW = cat.width * cat.scale;
