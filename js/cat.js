@@ -175,8 +175,19 @@ export class Cat {
           this.x += this.vx;
         } else {
           this.vx = 0;
-          this.state = 'idle';
-          this.stateTimer = 1 + Math.random() * 3;
+          
+          // Check if they walked to a box
+          if (this.targetToy && this.targetToy.type === 'box' && !this.targetToy.claimedBy && !this.targetToy.isDragging) {
+            this.inBox = this.targetToy;
+            this.targetToy.claimedBy = this.id;
+            this.state = Math.random() > 0.4 ? 'sleep' : 'sit';
+            this.stateTimer = 12 + Math.random() * 10;
+            this.targetToy = null;
+          } else {
+            this.state = 'idle';
+            this.stateTimer = 1 + Math.random() * 3;
+            this.targetToy = null;
+          }
         }
         break;
 
@@ -299,31 +310,32 @@ export class Cat {
       }
     }
 
-    // 2. Check energy (sleepy)
-    if (this.energy < 20) {
-      // Find an unoccupied cardboard box
-      const boxes = toys.filter(t => t.type === 'box' && !t.isDragging && !t.claimedBy);
-      if (boxes.length > 0 && !this.inBox) {
-        let closestBox = boxes[0];
-        let minDist = Math.abs(this.x - closestBox.x);
-        for (let i = 1; i < boxes.length; i++) {
-          const dist = Math.abs(this.x - boxes[i].x);
-          if (dist < minDist) {
-            minDist = dist;
-            closestBox = boxes[i];
-          }
+    // 2. Cats LOVE boxes! Check if unoccupied cardboard box exists.
+    // If a box is present and they aren't already in one, they have a high chance (50%) of wanting to crawl in
+    const boxes = toys.filter(t => t.type === 'box' && !t.isDragging && !t.claimedBy);
+    if (boxes.length > 0 && !this.inBox && Math.random() < 0.50) {
+      let closestBox = boxes[0];
+      let minDist = Math.abs(this.x - closestBox.x);
+      for (let i = 1; i < boxes.length; i++) {
+        const dist = Math.abs(this.x - boxes[i].x);
+        if (dist < minDist) {
+          minDist = dist;
+          closestBox = boxes[i];
         }
-        this.inBox = closestBox;
-        closestBox.claimedBy = this.id;
-        this.state = 'sleep';
-        this.stateTimer = 15 + Math.random() * 10;
-        return;
-      } else {
-        // Just curl up on the floor/rug
-        this.state = 'sleep';
-        this.stateTimer = 12 + Math.random() * 8;
-        return;
       }
+      this.state = 'walk';
+      this.targetX = closestBox.x;
+      this.targetToy = closestBox;
+      this.stateTimer = 6;
+      return;
+    }
+
+    // 3. Check energy (sleepy) - if very tired, curl up to sleep on the floor
+    if (this.energy < 35) {
+      this.state = 'sleep';
+      this.stateTimer = 12 + Math.random() * 8;
+      this.inBox = null;
+      return;
     }
 
     // 3. Play if energized and yarn exists
