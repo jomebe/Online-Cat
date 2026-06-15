@@ -86,7 +86,7 @@ export class Cat {
     this.animTime += delta;
 
     // Handle scale LERP based on observation mode
-    this.targetScale = this.observationMode ? 2.3 : 1.0;
+    this.targetScale = this.observationMode ? 3.2 : 1.0;
     this.scale += (this.targetScale - this.scale) * 0.12;
 
     // Stat changes over time
@@ -960,7 +960,7 @@ export class Cat {
     else if (this.state === 'eat') displayName = '🍲 ' + this.name;
     else if (this.state === 'play') displayName = '🎾 ' + this.name;
 
-    ctx.fillText(displayName, this.x, this.y - this.height - 24);
+    ctx.fillText(displayName, this.x, this.y - this.height * this.scale - 20);
     ctx.restore();
 
     // Render rising hearts

@@ -343,14 +343,14 @@ function handlePointerMove(e) {
     state.draggedCat.y = my - state.dragOffset.y;
     
     // Check Y position for close-up observation mode
-    // Trigger observation mode if dragged into the bottom 15% of screen
-    if (state.draggedCat.y > state.canvasHeight - 110) {
+    // Trigger observation mode if dragged past carpet level (floorY + 40)
+    if (state.draggedCat.y > state.floorY + 40) {
       if (!state.draggedCat.observationMode) {
         state.draggedCat.observationMode = true;
         addLog(`🔍 <strong>${state.draggedCat.name}</strong> 관찰 모드가 시작되었습니다. 쓰다듬어(Pet) 보세요!`);
         playChime();
       }
-    } else if (state.draggedCat.y < state.floorY + 20) { // drag back up
+    } else if (state.draggedCat.y < state.floorY + 15) { // drag back up above floor
       if (state.draggedCat.observationMode) {
         state.draggedCat.observationMode = false;
         addLog(`🏡 <strong>${state.draggedCat.name}</strong>(이)가 다시 방으로 돌아갔습니다.`);
