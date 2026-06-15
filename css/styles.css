@@ -624,36 +624,95 @@ button.icon-btn:active {
   100% { opacity: 0.4; }
 }
 
-/* Responsive adjustments */
+/* Responsive adjustments & Touch Optimizations */
+canvas, button, .toy-item, .cat-details-card, .sidebar, .settings-panel {
+  touch-action: manipulation;
+}
+
 @media (max-width: 768px) {
   header {
-    height: auto;
-    flex-direction: column;
-    padding: 12px;
-    gap: 10px;
+    height: 52px;
+    padding: 6px 14px;
+    gap: 0;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  header h1 {
+    font-size: 16px;
+  }
+  
+  .cat-icon {
+    font-size: 18px;
+  }
+  
+  .top-controls {
+    gap: 6px;
+  }
+  
+  .icon-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
   }
   
   .sidebar {
-    width: 280px;
-    right: -320px;
+    top: 74px;
+    width: calc(100% - 40px);
+    right: -100%;
+    height: calc(100vh - 210px);
+    padding: 16px;
+    gap: 12px;
   }
   
-  .toy-box {
-    left: 20px;
+  .sidebar.open {
     right: 20px;
-    bottom: 20px;
-    justify-content: center;
   }
   
-  .activity-log {
-    bottom: 130px;
+  .cat-details-card {
+    top: 74px;
+    width: calc(100% - 40px);
     left: 20px;
-    right: 20px;
-    width: auto;
-    height: 100px;
+    padding: 16px;
+    gap: 12px;
   }
   
   .settings-panel {
+    top: 74px;
     width: calc(100% - 40px);
+    padding: 16px;
+    gap: 12px;
+  }
+  
+  .toy-box {
+    left: 10px;
+    right: 10px;
+    bottom: 15px;
+    padding: 10px 12px;
+    gap: 10px;
+    justify-content: space-around;
+    overflow-x: auto;
+  }
+  
+  .toy-item {
+    padding: 8px 10px;
+    font-size: 12px;
+    min-width: 70px;
+    flex-shrink: 0;
+  }
+  
+  .activity-log {
+    bottom: 100px;
+    left: 10px;
+    right: 10px;
+    width: auto;
+    height: 90px;
+  }
+  
+  .activity-log.expanded {
+    width: auto !important;
+    height: 240px !important;
+    bottom: 100px;
   }
 }

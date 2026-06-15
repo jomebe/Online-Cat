@@ -242,9 +242,17 @@ canvas.addEventListener('drop', (e) => {
 // Interactive Click / Drag / Petting Handlers
 function getMousePos(e) {
   const rect = canvas.getBoundingClientRect();
-  // Support both mouse and touch events
-  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  let clientX = e.clientX;
+  let clientY = e.clientY;
+  
+  if (e.touches && e.touches.length > 0) {
+    clientX = e.touches[0].clientX;
+    clientY = e.touches[0].clientY;
+  } else if (e.changedTouches && e.changedTouches.length > 0) {
+    clientX = e.changedTouches[0].clientX;
+    clientY = e.changedTouches[0].clientY;
+  }
+  
   return {
     x: clientX - rect.left,
     y: clientY - rect.top
@@ -309,6 +317,11 @@ function handlePointerDown(e) {
 
 // Mouse Move (Dragging / Petting motion / Laser pointer tracking)
 function handlePointerMove(e) {
+  // Prevent mobile default scroll/bounce behavior while dragging/petting inside the canvas
+  if (e.touches) {
+    e.preventDefault();
+  }
+
   const pos = getMousePos(e);
   const mx = pos.x;
   const my = pos.y;
