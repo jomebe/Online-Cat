@@ -154,7 +154,7 @@ function playSoftClick() {
 
   osc.connect(filter);
   filter.connect(gain);
-  gain.connect(audioCtx.destination);
+  gain.connect(ambientGainNode || audioCtx.destination);
 
   osc.start();
   osc.stop(audioCtx.currentTime + 0.05);

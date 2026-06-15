@@ -1,5 +1,5 @@
 // js/app.js
-import { initAudio, playMeow, playChime, startAmbient, stopAmbient, toggleMute } from './audio.js';
+import { initAudio, playMeow, playChime, startAmbient, stopAmbient, toggleMute, setAmbientVolume } from './audio.js';
 import { initEnvironment, updateEnvironment, drawBackground, drawEnvironmentParticles, getTimeOfDay, setEnvironmentTime } from './canvas.js';
 import { Cat } from './cat.js';
 import { Toy, drawLaserDot } from './toy.js';
@@ -581,8 +581,10 @@ muteBtn.addEventListener('click', () => {
     addLog('🔊 사운드가 켜졌습니다.');
     
     // Resume weather sounds if active
-    if (state.weather !== 'calm') {
-      startAmbient(state.weather === 'rain' ? 'rain' : 'none');
+    if (state.weather === 'rain') {
+      startAmbient('rain');
+    } else if (state.weather === 'sakura') {
+      startAmbient('wind');
     }
   }
 });

@@ -40,7 +40,12 @@ export class Toy {
 
     // Apply gravity
     const gravity = 0.35;
-    const bottom = floorY - (this.type === 'yarn' ? 0 : this.height / 2);
+    let bottom = floorY;
+    if (this.type === 'yarn') {
+      bottom = floorY - this.radius;
+    } else if (this.type === 'treat') {
+      bottom = floorY - this.height / 2;
+    } // For 'box', bottom is exactly floorY (box bottom is at local y = 0)
     
     if (this.y < bottom) {
       this.vy += gravity;
