@@ -39,6 +39,9 @@ export class Cat {
     this.earWiggle = 0;
     this.isSleeping = false;
     this.isBeingPet = false;
+    this.isDragging = false;
+    this.observationMode = false;
+    this.laserInterested = null;
     this.hearts = []; // list of rising hearts [{x, y, alpha, size, speed}]
 
     // Specific breed colors
@@ -68,8 +71,21 @@ export class Cat {
     }
   }
 
+  leaveBox() {
+    if (this.inBox) {
+      if (this.inBox.claimedBy === this.id) {
+        this.inBox.claimedBy = null;
+      }
+      this.inBox = null;
+    }
+  }
+
   update(width, height, floorY, toys, laser, delta) {
     this.animTime += delta;
+
+    // Handle scale LERP based on observation mode
+    this.targetScale = this.observationMode ? 2.3 : 1.0;
+    this.scale += (this.targetScale - this.scale) * 0.12;
 
     // Stat changes over time
     this.hunger = Math.min(100, this.hunger + delta * 0.4); // hunger increases
@@ -86,27 +102,57 @@ export class Cat {
       }
     });
 
+    // Handle dragging state
+    if (this.isDragging) {
+      this.vx = 0;
+      this.vy = 0;
+      this.leaveBox();
+      return;
+    }
+
     // Handle petting state
     if (this.isBeingPet) {
       this.state = 'pet';
       this.vx = 0;
-      this.inBox = null;
+      this.leaveBox();
       if (Math.random() < 0.08) {
         this.hearts.push({
           x: this.x + (Math.random() * 40 - 20),
-          y: this.y - this.height - 10,
+          y: this.y - this.height * this.scale - 10,
           alpha: 1.0,
-          size: 6 + Math.random() * 6,
+          size: 6 * this.scale + Math.random() * 6,
           speed: 1 + Math.random() * 1
         });
       }
       return; // Freeze AI while petting
     }
 
-    // Set height based on floor level (or box)
+    // Set height based on floor level, box, or observation mode
     const baseFloorY = floorY - 5;
+    if (this.observationMode) {
+      this.y = height - 12; // Snap sitting Y to the very bottom
+      this.vx = 0;
+      this.vy = 0;
+      
+      // Simple AI state machine in observation mode (mostly sit, look around, purr)
+      if (this.stateTimer <= 0) {
+        this.state = Math.random() > 0.45 ? 'sit' : 'idle';
+        this.stateTimer = 3 + Math.random() * 5;
+      }
+      this.stateTimer -= delta;
+
+      // Restrict horizontal bounds in observation mode
+      if (this.x < 60) this.x = 60;
+      if (this.x > width - 60) this.x = width - 60;
+      return;
+    }
+
     if (this.inBox) {
-      this.y = this.inBox.y + 10;
+      if (this.state === 'sit') {
+        this.y = this.inBox.y - 40; // Sitting higher to look out
+      } else {
+        this.y = this.inBox.y - 34; // Sleep peeking out
+      }
       this.x = this.inBox.x;
     } else {
       this.y = baseFloorY;
@@ -114,42 +160,50 @@ export class Cat {
 
     // Check Laser Pointer (takes top priority if cat is awake)
     if (laser.active && this.state !== 'sleep') {
-      this.inBox = null; // get out of box to play!
-      
-      // Initialize reaction timer if not set (makes them watch it for a moment first)
-      if (this.laserReactTimer === undefined || this.laserReactTimer === null) {
-        this.laserReactTimer = 0.6 + Math.random() * 1.0; // 0.6 to 1.6 seconds delay
+      // Roll a random interest chance once when the laser is first turned on
+      if (this.laserInterested === undefined || this.laserInterested === null) {
+        this.laserInterested = Math.random() < 0.65; // 65% chance of chasing the laser
       }
 
-      this.direction = laser.x > this.x ? 1 : -1;
-      this.targetToy = null;
-      this.vx = 0;
+      if (this.laserInterested) {
+        this.leaveBox(); // get out of box to play!
+        
+        // Initialize reaction timer if not set (makes them watch it for a moment first)
+        if (this.laserReactTimer === undefined || this.laserReactTimer === null) {
+          this.laserReactTimer = 0.6 + Math.random() * 1.0; // 0.6 to 1.6 seconds delay
+        }
 
-      if (this.laserReactTimer > 0) {
-        // Look at the laser in curiosity
-        this.laserReactTimer -= delta;
-        this.state = 'idle';
+        this.direction = laser.x > this.x ? 1 : -1;
+        this.targetToy = null;
+        this.vx = 0;
+
+        if (this.laserReactTimer > 0) {
+          // Look at the laser in curiosity
+          this.laserReactTimer -= delta;
+          this.state = 'idle';
+          return;
+        }
+
+        // Chase laser
+        this.state = 'play';
+        const speed = 2.6;
+        const dist = Math.abs(this.x - laser.x);
+        if (dist > 15) {
+          this.vx = this.direction * speed;
+          this.x += this.vx; // Actually move the cat!
+        } else {
+          this.vx = 0;
+          // Pounce/pat animation triggers meow occasionally
+          if (Math.random() < 0.02) {
+            playMeow(this.breed === 'siamese' ? 'low' : 'happy');
+          }
+        }
         return;
       }
-
-      // Chase laser
-      this.state = 'play';
-      const speed = 2.6;
-      const dist = Math.abs(this.x - laser.x);
-      if (dist > 15) {
-        this.vx = this.direction * speed;
-        this.x += this.vx; // Actually move the cat!
-      } else {
-        this.vx = 0;
-        // Pounce/pat animation triggers meow occasionally
-        if (Math.random() < 0.02) {
-          playMeow(this.breed === 'siamese' ? 'low' : 'happy');
-        }
-      }
-      return;
     } else {
-      // Reset reaction timer when laser is off
+      // Reset reaction timer and interest when laser is off
       this.laserReactTimer = null;
+      this.laserInterested = null;
     }
 
     // AI Logic
@@ -290,6 +344,28 @@ export class Cat {
 
   // Choose a new state based on stats and environment
   chooseNewState(toys, canvasWidth) {
+    // If already inside a cardboard box, prioritize staying cozy!
+    if (this.inBox) {
+      // 1. Check hunger first: if extremely hungry, they must leave the box to eat
+      if (this.hunger > 75) {
+        const foods = toys.filter(t => t.type === 'treat' && t.bites > 0 && !t.isDragging);
+        if (foods.length > 0) {
+          this.leaveBox();
+          // proceed to hunger handling below
+        }
+      } else {
+        // 70% chance of staying cozy inside the box
+        if (Math.random() < 0.70) {
+          this.state = Math.random() > 0.4 ? 'sleep' : 'sit';
+          this.stateTimer = 10 + Math.random() * 10;
+          return;
+        } else {
+          // 30% chance they choose to leave the box
+          this.leaveBox();
+        }
+      }
+    }
+
     // 1. Check hunger
     if (this.hunger > 60) {
       const foods = toys.filter(t => t.type === 'treat' && t.bites > 0 && !t.isDragging);
@@ -297,7 +373,7 @@ export class Cat {
         let closestFood = foods[0];
         let minDist = Math.abs(this.x - closestFood.x);
         for (let i = 1; i < foods.length; i++) {
-          const dist = Math.abs(this.x - foods[i].x);
+          const dist = Math.abs(foods[i].x - this.x); // Wait, make sure we use distance to this cat!
           if (dist < minDist) {
             minDist = dist;
             closestFood = foods[i];
@@ -317,7 +393,7 @@ export class Cat {
       let closestBox = boxes[0];
       let minDist = Math.abs(this.x - closestBox.x);
       for (let i = 1; i < boxes.length; i++) {
-        const dist = Math.abs(this.x - boxes[i].x);
+        const dist = Math.abs(boxes[i].x - this.x);
         if (dist < minDist) {
           minDist = dist;
           closestBox = boxes[i];
@@ -334,7 +410,7 @@ export class Cat {
     if (this.energy < 35) {
       this.state = 'sleep';
       this.stateTimer = 12 + Math.random() * 8;
-      this.inBox = null;
+      this.leaveBox();
       return;
     }
 
@@ -345,7 +421,7 @@ export class Cat {
         let closestYarn = yarns[0];
         let minDist = Math.abs(this.x - closestYarn.x);
         for (let i = 1; i < yarns.length; i++) {
-          const dist = Math.abs(this.x - yarns[i].x);
+          const dist = Math.abs(yarns[i].x - this.x);
           if (dist < minDist) {
             minDist = dist;
             closestYarn = yarns[i];
@@ -365,7 +441,7 @@ export class Cat {
       this.state = 'walk';
       this.targetX = 50 + Math.random() * (canvasWidth - 100);
       this.stateTimer = 6;
-      this.inBox = null; // leaves box
+      this.leaveBox(); // leaves box
     } else if (roll < 0.75) {
       // Sit
       this.state = 'sit';
@@ -393,7 +469,12 @@ export class Cat {
     let sleepPose = false;
 
     // Apply animation cycles
-    if (this.state === 'walk' || this.state === 'play' || this.state === 'eat') {
+    if (this.isDragging) {
+      bodyYOffset = -4;
+      headYOffset = -14;
+      headRotation = 0.05;
+      tailAngle = Math.PI * 0.45 + Math.sin(this.animTime * 3.5) * 0.08; // hanging tail sways slowly
+    } else if (this.state === 'walk' || this.state === 'play' || this.state === 'eat') {
       bodyYOffset = Math.sin(this.animTime * 11) * 1.5;
       headYOffset = -18 + Math.sin(this.animTime * 11) * 0.8;
       tailAngle = Math.sin(this.animTime * 6) * 0.25;
@@ -454,10 +535,19 @@ export class Cat {
       const legW = 6;
       const legH = 14;
       const legSpread = 12;
-      const cycle = this.animTime * 11;
       
-      const frontLegSwing = Math.sin(cycle) * 7;
-      const backLegSwing = -Math.sin(cycle) * 7;
+      let frontLegSwing = 0;
+      let backLegSwing = 0;
+
+      if (this.isDragging) {
+        // Legs hang loose, swing very slowly like a pendulum
+        frontLegSwing = Math.sin(this.animTime * 3) * 6;
+        backLegSwing = -Math.sin(this.animTime * 3) * 6;
+      } else {
+        const cycle = this.animTime * 11;
+        frontLegSwing = Math.sin(cycle) * 7;
+        backLegSwing = -Math.sin(cycle) * 7;
+      }
 
       ctx.fillStyle = this.breed === 'siamese' ? this.colors.points : this.colors.body;
 
@@ -644,7 +734,7 @@ export class Cat {
     }
 
     // Draw Eyes (happy arcs for sleep/petting, open circles otherwise)
-    const sleepingOrPetting = this.state === 'sleep' || this.state === 'pet';
+    const sleepingOrPetting = (this.state === 'sleep' || this.state === 'pet') && !this.isDragging;
     ctx.strokeStyle = '#2f3542';
     ctx.lineWidth = 2.2;
     ctx.lineCap = 'round';
@@ -840,15 +930,17 @@ export class Cat {
     });
   }
 
-  // Check if click coordinates hit the cat body bounds
+  // Check if click coordinates hit the cat body bounds (scaled proportionally)
   isClicked(mx, my) {
-    const rx = this.x - this.width / 2;
-    const ry = this.y - this.height - 10;
+    const w = this.width * this.scale;
+    const h = this.height * this.scale;
+    const rx = this.x - w / 2;
+    const ry = this.y - h - 10 * this.scale;
     return (
       mx >= rx &&
-      mx <= rx + this.width &&
+      mx <= rx + w &&
       my >= ry &&
-      my <= ry + this.height + 15
+      my <= ry + h + 15 * this.scale
     );
   }
 

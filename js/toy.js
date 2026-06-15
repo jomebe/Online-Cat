@@ -88,7 +88,7 @@ export class Toy {
   }
 
   // Draw the toy on the canvas
-  draw(ctx, isBehindCat = false) {
+  draw(ctx, isBehindCat = false, occupant = null) {
     ctx.save();
     ctx.translate(this.x, this.y);
 
@@ -249,27 +249,79 @@ export class Toy {
         ctx.fill();
         ctx.stroke();
 
-        // Box Logo (cute cat face print on box side)
-        ctx.strokeStyle = '#4e3629';
-        ctx.fillStyle = '#4e3629';
-        ctx.lineWidth = 1.8;
-        const logoY = y + h * 0.6;
-        ctx.beginPath();
-        ctx.arc(-12, logoY, 3, 0, Math.PI * 2);
-        ctx.arc(12, logoY, 3, 0, Math.PI * 2);
-        ctx.fill();
-        
-        ctx.beginPath();
-        // Left ear
-        ctx.moveTo(-17, logoY - 4); ctx.lineTo(-11, logoY - 11); ctx.lineTo(-7, logoY - 4);
-        // Right ear
-        ctx.moveTo(17, logoY - 4); ctx.lineTo(11, logoY - 11); ctx.lineTo(7, logoY - 4);
-        ctx.stroke();
-        
-        // Mouth
-        ctx.beginPath();
-        ctx.moveTo(-3, logoY + 1); ctx.quadraticCurveTo(0, logoY + 3, 3, logoY + 1);
-        ctx.stroke();
+        if (occupant) {
+          ctx.save();
+          // Draw a tape/sticker label on the front of the box
+          ctx.font = '600 10px "Outfit", sans-serif';
+          const textWidth = ctx.measureText('🐱 ' + occupant.name).width;
+          const labelW = Math.max(55, textWidth + 12);
+          const labelH = 18;
+          const labelX = -labelW / 2;
+          const labelY = y + h * 0.52; // centered on the front wall
+
+          // 1. Sticker Shadow manually drawn for compatibility
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+          const r = 4;
+          ctx.beginPath();
+          ctx.moveTo(labelX + r + 1.5, labelY + 1.5);
+          ctx.lineTo(labelX + labelW - r + 1.5, labelY + 1.5);
+          ctx.quadraticCurveTo(labelX + labelW + 1.5, labelY + 1.5, labelX + labelW + 1.5, labelY + r + 1.5);
+          ctx.lineTo(labelX + labelW + 1.5, labelY + labelH - r + 1.5);
+          ctx.quadraticCurveTo(labelX + labelW + 1.5, labelY + labelH + 1.5, labelX + labelW - r + 1.5, labelY + labelH + 1.5);
+          ctx.lineTo(labelX + r + 1.5, labelY + labelH + 1.5);
+          ctx.quadraticCurveTo(labelX + 1.5, labelY + labelH + 1.5, labelX + 1.5, labelY + labelH - r + 1.5);
+          ctx.lineTo(labelX + 1.5, labelY + r + 1.5);
+          ctx.quadraticCurveTo(labelX + 1.5, labelY + 1.5, labelX + r + 1.5, labelY + 1.5);
+          ctx.closePath();
+          ctx.fill();
+
+          // 2. Sticker Background (light cream/white sticker tape)
+          ctx.fillStyle = '#ffffff'; 
+          ctx.strokeStyle = '#ff6b81'; // beautiful pink accent border!
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.moveTo(labelX + r, labelY);
+          ctx.lineTo(labelX + labelW - r, labelY);
+          ctx.quadraticCurveTo(labelX + labelW, labelY, labelX + labelW, labelY + r);
+          ctx.lineTo(labelX + labelW, labelY + labelH - r);
+          ctx.quadraticCurveTo(labelX + labelW, labelY + labelH, labelX + labelW - r, labelY + labelH);
+          ctx.lineTo(labelX + r, labelY + labelH);
+          ctx.quadraticCurveTo(labelX, labelY + labelH, labelX, labelY + labelH - r);
+          ctx.lineTo(labelX, labelY + r);
+          ctx.quadraticCurveTo(labelX, labelY, labelX + r, labelY);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // 3. Sticker text
+          ctx.fillStyle = '#2f3542'; // dark color
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('🐱 ' + occupant.name, 0, labelY + labelH / 2 + 0.5);
+          ctx.restore();
+        } else {
+          // Draw Box Logo (cute cat face print on box side)
+          ctx.strokeStyle = '#4e3629';
+          ctx.fillStyle = '#4e3629';
+          ctx.lineWidth = 1.8;
+          const logoY = y + h * 0.6;
+          ctx.beginPath();
+          ctx.arc(-12, logoY, 3, 0, Math.PI * 2);
+          ctx.arc(12, logoY, 3, 0, Math.PI * 2);
+          ctx.fill();
+          
+          ctx.beginPath();
+          // Left ear
+          ctx.moveTo(-17, logoY - 4); ctx.lineTo(-11, logoY - 11); ctx.lineTo(-7, logoY - 4);
+          // Right ear
+          ctx.moveTo(17, logoY - 4); ctx.lineTo(11, logoY - 11); ctx.lineTo(7, logoY - 4);
+          ctx.stroke();
+          
+          // Mouth
+          ctx.beginPath();
+          ctx.moveTo(-3, logoY + 1); ctx.quadraticCurveTo(0, logoY + 3, 3, logoY + 1);
+          ctx.stroke();
+        }
       }
 
     } else if (this.type === 'treat') {

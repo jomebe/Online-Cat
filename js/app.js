@@ -11,7 +11,10 @@ const state = {
   laser: { x: 0, y: 0, active: false },
   selectedCat: null,
   draggedToy: null,
+  draggedCat: null,
+  isCatDragging: false,
   dragOffset: { x: 0, y: 0 },
+  pointerStartPos: { x: 0, y: 0 },
   pettingCat: null,
   lastTime: 0,
   weather: 'calm', // 'calm', 'sakura', 'rain'
@@ -276,12 +279,16 @@ function handlePointerDown(e) {
     }
   }
 
-  // 2. Check if clicked a cat (priority: Petting / Stats panel selection)
+  // 2. Check if clicked a cat (priority: Petting / Stats panel selection / Drag start)
   const clickedCat = [...state.cats].reverse().find(c => c.isClicked(mx, my));
   if (clickedCat) {
     // Start Petting
     state.pettingCat = clickedCat;
     clickedCat.startPetting();
+    
+    // Store drag start info
+    state.pointerStartPos = { x: mx, y: my };
+    state.isCatDragging = false;
     
     // Select for details panel
     showCatDetails(clickedCat);
@@ -312,11 +319,49 @@ function handlePointerMove(e) {
     state.laser.y = my;
   }
 
-  // Dragging toy
+  // 1. Dragging toy
   if (state.draggedToy) {
     state.draggedToy.x = mx - state.dragOffset.x;
     state.draggedToy.y = my - state.dragOffset.y;
     return;
+  }
+
+  // 2. Dragging cat
+  if (state.draggedCat) {
+    state.draggedCat.x = mx - state.dragOffset.x;
+    state.draggedCat.y = my - state.dragOffset.y;
+    
+    // Check Y position for close-up observation mode
+    // Trigger observation mode if dragged into the bottom 15% of screen
+    if (state.draggedCat.y > state.canvasHeight - 110) {
+      if (!state.draggedCat.observationMode) {
+        state.draggedCat.observationMode = true;
+        addLog(`🔍 <strong>${state.draggedCat.name}</strong> 관찰 모드가 시작되었습니다. 쓰다듬어(Pet) 보세요!`);
+        playChime();
+      }
+    } else if (state.draggedCat.y < state.floorY + 20) { // drag back up
+      if (state.draggedCat.observationMode) {
+        state.draggedCat.observationMode = false;
+        addLog(`🏡 <strong>${state.draggedCat.name}</strong>(이)가 다시 방으로 돌아갔습니다.`);
+        playChime();
+      }
+    }
+    return;
+  }
+
+  // 3. Handle separating petting from dragging
+  if (state.pettingCat && !state.isCatDragging) {
+    const dist = Math.hypot(mx - state.pointerStartPos.x, my - state.pointerStartPos.y);
+    if (dist > 15) { // drag threshold
+      state.isCatDragging = true;
+      state.draggedCat = state.pettingCat;
+      state.draggedCat.isDragging = true;
+      state.draggedCat.stopPetting(); // stop purring
+      state.dragOffset.x = mx - state.draggedCat.x;
+      state.dragOffset.y = my - state.draggedCat.y;
+      state.pettingCat = null;
+      addLog(`🖐️ <strong>${state.draggedCat.name}</strong>를 안아 올렸습니다.`);
+    }
   }
 
   // Check cursor changes
@@ -327,10 +372,6 @@ function handlePointerMove(e) {
     canvas.style.cursor = 'crosshair';
   } else if (hoverCat) {
     canvas.style.cursor = 'grab'; // petting indicator
-    // if mouse is down, pet
-    if (state.pettingCat && state.pettingCat === hoverCat) {
-      // already petting
-    }
   } else if (hoverToy) {
     canvas.style.cursor = 'grab';
   } else {
@@ -343,6 +384,15 @@ function handlePointerUp() {
   if (state.draggedToy) {
     state.draggedToy.isDragging = false;
     state.draggedToy = null;
+  }
+  
+  if (state.draggedCat) {
+    state.draggedCat.isDragging = false;
+    // Snap back to floor height if not in close-up observation mode
+    if (!state.draggedCat.observationMode) {
+      state.draggedCat.y = state.floorY - 5;
+    }
+    state.draggedCat = null;
   }
   
   if (state.pettingCat) {
@@ -685,8 +735,16 @@ function loop(timestamp) {
     }
   });
 
-  // 4. Update & Draw Cats
-  state.cats.forEach(cat => {
+  // 4. Sort observed/dragged cats to draw on top, then Update & Draw
+  const sortedCats = [...state.cats].sort((a, b) => {
+    if (a.isDragging && !b.isDragging) return 1;
+    if (!a.isDragging && b.isDragging) return -1;
+    if (a.observationMode && !b.observationMode) return 1;
+    if (!a.observationMode && b.observationMode) return -1;
+    return 0;
+  });
+
+  sortedCats.forEach(cat => {
     cat.update(state.canvasWidth, state.canvasHeight, state.floorY, state.toys, state.laser, delta);
     cat.draw(ctx);
   });
@@ -694,7 +752,8 @@ function loop(timestamp) {
   // 5. Draw Box FRONT parts (covers cat body inside box)
   state.toys.forEach(toy => {
     if (toy.type === 'box') {
-      toy.draw(ctx, false); // draw front flaps/walls
+      const occupant = state.cats.find(c => c.inBox === toy);
+      toy.draw(ctx, false, occupant); // draw front flaps/walls
     } else {
       // Other toys (yarn, treats)
       toy.update(state.canvasWidth, state.canvasHeight, state.floorY);
