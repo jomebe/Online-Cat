@@ -606,7 +606,8 @@ export class Cat {
 
   // Draw Name tag, hearts, and stars overlay (drawn on top of all toys/boxes)
   drawOverlay(ctx) {
-    const renderH = this.height * this.scale;
+    // baseRenderH matches the 70px base used in draw()
+    const renderH = 70 * this.scale;
 
     // Draw Name text overlay (always in screen space, not flipped)
     ctx.save();
@@ -621,7 +622,8 @@ export class Cat {
     else if (this.state === 'eat') displayName = '🍲 ' + this.name;
     else if (this.state === 'play') displayName = '🎾 ' + this.name;
 
-    ctx.fillText(displayName, this.x, this.y - renderH - 8);
+    // this.y is the floor anchor; sprite top = this.y - renderH; name floats 6px above that
+    ctx.fillText(displayName, this.x, this.y - renderH - 6);
     ctx.restore();
 
     // Render rising hearts
