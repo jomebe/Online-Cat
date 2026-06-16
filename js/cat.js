@@ -4,28 +4,28 @@ import { getSprite, getAccessorySprite } from './spriteLoader.js';
 
 const ACCESSORY_OFFSETS = {
   default: {
-    collar:  { dx: 0.12,  dy: -0.32, ds: 0.28 },
-    ribbon:  { dx: 0.08,  dy: -0.28, ds: 0.28 },
-    hat:     { dx: -0.05, dy: -0.82, ds: 0.42 },
-    glasses: { dx: 0.22,  dy: -0.52, ds: 0.32 },
+    collar:  { dx: -0.18, dy: -0.36, ds: 0.28 },
+    ribbon:  { dx: -0.18, dy: -0.36, ds: 0.28 },
+    hat:     { dx: -0.20, dy: -0.82, ds: 0.38 },
+    glasses: { dx: -0.28, dy: -0.52, ds: 0.28 },
   },
   ginger: {
-    collar:  { dx: 0.15,  dy: -0.34, ds: 0.28 },
-    ribbon:  { dx: 0.10,  dy: -0.30, ds: 0.28 },
-    hat:     { dx: -0.02, dy: -0.82, ds: 0.42 },
-    glasses: { dx: 0.24,  dy: -0.54, ds: 0.32 },
+    collar:  { dx: -0.15, dy: -0.36, ds: 0.28 },
+    ribbon:  { dx: -0.15, dy: -0.36, ds: 0.28 },
+    hat:     { dx: -0.18, dy: -0.82, ds: 0.38 },
+    glasses: { dx: -0.26, dy: -0.54, ds: 0.28 },
   },
   siamese: {
-    collar:  { dx: 0.08,  dy: -0.36, ds: 0.28 },
-    ribbon:  { dx: 0.05,  dy: -0.32, ds: 0.28 },
-    hat:     { dx: -0.10, dy: -0.84, ds: 0.40 },
-    glasses: { dx: 0.18,  dy: -0.56, ds: 0.30 },
+    collar:  { dx: -0.16, dy: -0.36, ds: 0.28 },
+    ribbon:  { dx: -0.16, dy: -0.36, ds: 0.28 },
+    hat:     { dx: -0.20, dy: -0.84, ds: 0.38 },
+    glasses: { dx: -0.28, dy: -0.54, ds: 0.28 },
   },
   grey: {
-    collar:  { dx: 0.10,  dy: -0.36, ds: 0.28 },
-    ribbon:  { dx: 0.06,  dy: -0.32, ds: 0.28 },
-    hat:     { dx: -0.08, dy: -0.84, ds: 0.42 },
-    glasses: { dx: 0.20,  dy: -0.56, ds: 0.32 },
+    collar:  { dx: -0.15, dy: -0.36, ds: 0.28 },
+    ribbon:  { dx: -0.15, dy: -0.36, ds: 0.28 },
+    hat:     { dx: -0.20, dy: -0.84, ds: 0.38 },
+    glasses: { dx: -0.26, dy: -0.54, ds: 0.28 },
   }
 };
 

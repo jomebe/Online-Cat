@@ -458,13 +458,25 @@ async function processBreed(breedKey) {
 // Global accessory sprite cache
 const accessoryCache = {};
 
+/** Crop transparent margins from a canvas to isolate the content */
+function cropToContent(processed) {
+  const ctx = processed.getContext('2d');
+  const b = findBounds(ctx, 0, 0, processed.width, processed.height);
+  const fc = document.createElement('canvas');
+  fc.width = b.w;
+  fc.height = b.h;
+  fc.getContext('2d').drawImage(processed, b.x, b.y, b.w, b.h, 0, 0, b.w, b.h);
+  return fc;
+}
+
 // Load all accessories
 async function loadAccessories() {
   const accs = ['collar', 'ribbon', 'hat', 'glasses'];
   await Promise.all(accs.map(async (acc) => {
     const img = await tryLoadImage(`assets/sprites/acc_${acc}.png`);
     if (img) {
-      accessoryCache[acc] = removeWhiteBackground(img);
+      const bgRemoved = removeWhiteBackground(img);
+      accessoryCache[acc] = cropToContent(bgRemoved);
     }
   }));
 }
