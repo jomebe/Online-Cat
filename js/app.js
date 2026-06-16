@@ -668,22 +668,35 @@ canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
 canvas.addEventListener('touchmove', handlePointerMove, { passive: false });
 window.addEventListener('touchend', handlePointerUp);
 
-// Double-click or Right-click to remove an individual toy
+// Double-click to track a cat, remove a toy, or stop tracking
 canvas.addEventListener('dblclick', (e) => {
   const pos = getMousePos(e);
   const mx = pos.x;
   const my = pos.y;
 
+  // 1. Check if clicked a cat (shortcut to start camera tracking)
+  const clickedCat = [...state.cats].reverse().find(c => c.isClicked(mx, my));
+  if (clickedCat) {
+    state.camera.targetCat = clickedCat;
+    document.getElementById('camera-target-name').textContent = clickedCat.name;
+    document.getElementById('camera-hud').classList.remove('hidden');
+    hideCatDetails();
+    playChime();
+    return;
+  }
+
+  // 2. Check if clicked a toy (delete it)
   const clickedToyIdx = state.toys.findIndex(t => t.isClicked(mx, my));
   if (clickedToyIdx > -1) {
     removeIndividualToy(state.toys[clickedToyIdx], clickedToyIdx);
-  } else {
-    // Double click empty space: stop tracking camera
-    if (state.camera.targetCat) {
-      state.camera.targetCat = null;
-      document.getElementById('camera-hud').classList.add('hidden');
-      playChime();
-    }
+    return;
+  }
+
+  // 3. Double click empty space: stop tracking camera
+  if (state.camera.targetCat) {
+    state.camera.targetCat = null;
+    document.getElementById('camera-hud').classList.add('hidden');
+    playChime();
   }
 });
 
@@ -1450,3 +1463,30 @@ async function initGame() {
 }
 
 initGame();
+
+// Keyboard Shortcuts
+window.addEventListener('keydown', (e) => {
+  // Ignore keyboard shortcuts when typing inside form input fields
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+    return;
+  }
+
+  // Toggle UI mode using 'h' key or Korean layout equivalent 'ㅗ'
+  if (e.key === 'h' || e.key === 'H' || e.key === 'ㅗ' || e.key === 'ㅘ') {
+    const isHidden = document.body.classList.contains('ui-hidden');
+    if (isHidden) {
+      // Restore UI
+      document.body.classList.remove('ui-hidden');
+      showUiBtn.classList.add('hidden');
+      if (state.camera.targetCat) {
+        state.camera.targetCat = null;
+        cameraHud.classList.add('hidden');
+      }
+    } else {
+      // Hide UI
+      document.body.classList.add('ui-hidden');
+      showUiBtn.classList.remove('hidden');
+    }
+    playChime();
+  }
+});
