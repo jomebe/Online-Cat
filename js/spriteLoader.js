@@ -455,11 +455,32 @@ async function processBreed(breedKey) {
   return result;
 }
 
+// Global accessory sprite cache
+const accessoryCache = {};
+
+// Load all accessories
+async function loadAccessories() {
+  const accs = ['collar', 'ribbon', 'hat', 'glasses'];
+  await Promise.all(accs.map(async (acc) => {
+    const img = await tryLoadImage(`assets/sprites/acc_${acc}.png`);
+    if (img) {
+      accessoryCache[acc] = removeWhiteBackground(img);
+    }
+  }));
+}
+
+export function getAccessorySprite(acc) {
+  return accessoryCache[acc] || null;
+}
+
 /**
  * Load ALL breed sprites. Call once before game loop starts.
  */
 export async function loadAllSprites() {
   const breeds = Object.keys(BREED_SPRITE_MAP);
+
+  // Load accessories first
+  await loadAccessories();
 
   // Process unique breeds first
   const uniqueKeys = [...new Set(Object.values(BREED_SPRITE_MAP))];

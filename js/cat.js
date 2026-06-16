@@ -1,6 +1,6 @@
 // js/cat.js
 import { playMeow, startPurr, stopPurr } from './audio.js';
-import { getSprite } from './spriteLoader.js';
+import { getSprite, getAccessorySprite } from './spriteLoader.js';
 
 export class Cat {
   constructor(name, breed, options = {}) {
@@ -643,86 +643,47 @@ export class Cat {
     });
   }
 
-  // Draw accessories as simple overlays on the sprite
+const ACCESSORY_OFFSETS = {
+  default: {
+    collar:  { dx: 0.12,  dy: -0.32, ds: 0.28 },
+    ribbon:  { dx: 0.08,  dy: -0.28, ds: 0.28 },
+    hat:     { dx: -0.05, dy: -0.82, ds: 0.42 },
+    glasses: { dx: 0.22,  dy: -0.52, ds: 0.32 },
+  },
+  ginger: {
+    collar:  { dx: 0.15,  dy: -0.34, ds: 0.28 },
+    ribbon:  { dx: 0.10,  dy: -0.30, ds: 0.28 },
+    hat:     { dx: -0.02, dy: -0.82, ds: 0.42 },
+    glasses: { dx: 0.24,  dy: -0.54, ds: 0.32 },
+  },
+  siamese: {
+    collar:  { dx: 0.08,  dy: -0.36, ds: 0.28 },
+    ribbon:  { dx: 0.05,  dy: -0.32, ds: 0.28 },
+    hat:     { dx: -0.10, dy: -0.84, ds: 0.40 },
+    glasses: { dx: 0.18,  dy: -0.56, ds: 0.30 },
+  },
+  grey: {
+    collar:  { dx: 0.10,  dy: -0.36, ds: 0.28 },
+    ribbon:  { dx: 0.06,  dy: -0.32, ds: 0.28 },
+    hat:     { dx: -0.08, dy: -0.84, ds: 0.42 },
+    glasses: { dx: 0.20,  dy: -0.56, ds: 0.32 },
+  }
+};
+
+  // Draw accessories using generated sprite images
   drawAccessories(ctx, renderW, renderH) {
-    const s = this.scale;
-    
     this.accessories.forEach(acc => {
-      if (acc === 'collar') {
-        // Red collar near the neck area
-        ctx.strokeStyle = '#e84118';
-        ctx.lineWidth = 3 * s;
-        ctx.beginPath();
-        ctx.ellipse(0, -renderH * 0.35, renderW * 0.2, 4 * s, 0, 0.2, Math.PI * 0.8);
-        ctx.stroke();
-        // Golden bell
-        ctx.fillStyle = '#fbc531';
-        ctx.beginPath();
-        ctx.arc(3 * s, -renderH * 0.32, 3 * s, 0, Math.PI * 2);
-        ctx.fill();
+      const img = getAccessorySprite(acc);
+      if (!img) return;
 
-      } else if (acc === 'ribbon') {
-        const ry = -renderH * 0.38;
-        ctx.fillStyle = '#ff4757';
-        ctx.beginPath();
-        ctx.moveTo(0, ry);
-        ctx.lineTo(-8 * s, ry - 5 * s);
-        ctx.lineTo(-8 * s, ry + 5 * s);
-        ctx.closePath();
-        ctx.moveTo(0, ry);
-        ctx.lineTo(8 * s, ry - 5 * s);
-        ctx.lineTo(8 * s, ry + 5 * s);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = '#ff6b81';
-        ctx.beginPath();
-        ctx.arc(0, ry, 3.5 * s, 0, Math.PI * 2);
-        ctx.fill();
+      const offsets = (ACCESSORY_OFFSETS[this.breed] || ACCESSORY_OFFSETS.default)[acc] || ACCESSORY_OFFSETS.default[acc];
+      
+      const aw = renderW * offsets.ds;
+      const ah = aw * (img.height / img.width);
+      const ax = renderW * offsets.dx - aw * 0.5;
+      const ay = -renderH * Math.abs(offsets.dy) - ah * 0.5;
 
-      } else if (acc === 'hat') {
-        const hy = -renderH * 0.85;
-        ctx.save();
-        ctx.translate(0, hy);
-        ctx.rotate(-0.06);
-        // Brim
-        ctx.fillStyle = '#3f313a';
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 14 * s, 3.5 * s, 0, 0, Math.PI * 2);
-        ctx.fill();
-        // Cone
-        ctx.fillStyle = '#4834d4';
-        ctx.beginPath();
-        ctx.moveTo(-8 * s, -1);
-        ctx.quadraticCurveTo(-1 * s, -12 * s, -2 * s, -26 * s);
-        ctx.lineTo(5 * s, -1);
-        ctx.closePath();
-        ctx.fill();
-        // Star
-        ctx.fillStyle = '#f9ca24';
-        ctx.beginPath();
-        ctx.arc(-1 * s, -12 * s, 2 * s, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-
-      } else if (acc === 'glasses') {
-        const gy = -renderH * 0.62;
-        ctx.strokeStyle = '#ff4757';
-        ctx.fillStyle = 'rgba(255, 71, 87, 0.15)';
-        ctx.lineWidth = 2 * s;
-        // Left lens
-        ctx.beginPath();
-        ctx.arc(-5 * s, gy, 5 * s, 0, Math.PI * 2);
-        ctx.stroke(); ctx.fill();
-        // Right lens
-        ctx.beginPath();
-        ctx.arc(5 * s, gy, 5 * s, 0, Math.PI * 2);
-        ctx.stroke(); ctx.fill();
-        // Bridge
-        ctx.beginPath();
-        ctx.moveTo(-1 * s, gy);
-        ctx.lineTo(1 * s, gy);
-        ctx.stroke();
-      }
+      ctx.drawImage(img, ax, ay, aw, ah);
     });
   }
 
