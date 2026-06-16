@@ -2,11 +2,12 @@
 // Supabase Client Initialization and authentication helpers.
 
 const SUPABASE_URL = "https://qnzxwbtxrfcqxshiujmu.supabase.co";
+const DEFAULT_ANON_KEY = "sb_publishable_0C3jRPfJxxOhkb-fB7Je_w_iAEfnBcI";
 
-// Try to load the anon key from localStorage
-let supabaseAnonKey = "";
+// Try to load the anon key from localStorage, fallback to DEFAULT_ANON_KEY
+let supabaseAnonKey = DEFAULT_ANON_KEY;
 try {
-  supabaseAnonKey = localStorage.getItem('supabase_anon_key') || "";
+  supabaseAnonKey = localStorage.getItem('supabase_anon_key') || DEFAULT_ANON_KEY;
 } catch (e) {
   console.warn("localStorage is not available.");
 }
@@ -20,7 +21,7 @@ export function getSupabaseAnonKey() {
 }
 
 export function setSupabaseAnonKey(key) {
-  supabaseAnonKey = key;
+  supabaseAnonKey = key || DEFAULT_ANON_KEY;
   try {
     if (key) {
       localStorage.setItem('supabase_anon_key', key);
