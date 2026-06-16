@@ -13,6 +13,14 @@
     <!-- Main rendering canvas -->
     <canvas id="main-canvas"></canvas>
 
+    <!-- Cinematic UI Toggles & Camera Tracking HUD -->
+    <button id="show-ui-btn" class="show-ui-btn hidden" title="UI 보이기">👁️</button>
+    
+    <div id="camera-hud" class="camera-hud glass-panel hidden">
+      <span>🎥 <strong id="camera-target-name">고양이</strong> 추적 중</span>
+      <button id="stop-track-btn">추적 해제</button>
+    </div>
+
     <!-- Guide hint -->
     <div id="pet-indicator" class="pet-indicator">🐾 마우스로 고양이를 쓰다듬어(Pet) 보세요!</div>
 
@@ -42,6 +50,7 @@
       </div>
       <div class="top-controls">
         <button id="auth-btn" class="auth-btn" title="로그인">🔑 로그인</button>
+        <button id="hide-ui-btn" class="icon-btn" title="UI 숨기기 (노는 모습만 보기)">👁️</button>
         <button id="settings-btn" class="icon-btn" title="환경 설정">⚙️</button>
         <button id="mute-btn" class="icon-btn" title="소리 켜기/끄기">🔊</button>
         <button id="toggle-creator-btn" class="icon-btn" title="고양이 만들기">➕</button>
@@ -119,6 +128,7 @@
       </div>
 
       <div class="card-actions">
+        <button id="track-btn" style="background:#54a0ff; color:white;">🎥 카메라 추적</button>
         <button id="rename-btn">✏️ 이름 변경</button>
         <button id="release-btn" class="release-btn">👋 입양 보내기</button>
       </div>

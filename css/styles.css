@@ -956,3 +956,92 @@ canvas, button, .toy-item, .cat-details-card, .sidebar, .settings-panel {
   color: white;
   box-shadow: 0 6px 12px rgba(255, 71, 87, 0.25);
 }
+
+/* Cinematic View & Camera Tracking */
+.hidden {
+  display: none !important;
+}
+
+body.ui-hidden header,
+body.ui-hidden #pet-indicator,
+body.ui-hidden #observation-hud,
+body.ui-hidden #settings-panel,
+body.ui-hidden #cat-details-card,
+body.ui-hidden #sidebar,
+body.ui-hidden #activity-log,
+body.ui-hidden #toy-box {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.show-ui-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--border-glass);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  transition: all 0.2s ease;
+}
+
+.show-ui-btn:hover {
+  transform: scale(1.1);
+  background: #ffffff;
+  box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+}
+
+.show-ui-btn:active {
+  transform: scale(0.95);
+}
+
+.dark-theme .show-ui-btn {
+  background: rgba(30, 41, 59, 0.7);
+  border-color: rgba(255,255,255,0.08);
+  color: var(--text-light);
+}
+
+.camera-hud {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 12px 20px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 14px;
+  box-shadow: var(--shadow-main);
+}
+
+.camera-hud button {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.camera-hud button:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.camera-hud button:active {
+  transform: translateY(0);
+}

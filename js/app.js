@@ -26,7 +26,13 @@ const state = {
   canvasHeight: 0,
   floorY: 0,
   user: null, // supabase authenticated user
-  lastSyncTime: 0 // throttle timer for DB stats updates
+  lastSyncTime: 0, // throttle timer for DB stats updates
+  camera: {
+    x: 0,
+    y: 0,
+    zoom: 1.0,
+    targetCat: null
+  }
 };
 
 // Canvas Setup
@@ -48,6 +54,11 @@ function resizeCanvas() {
   state.canvasWidth = width;
   state.canvasHeight = height;
   state.floorY = height * 0.62; // floor level at 62% down
+  
+  if (!state.camera.targetCat) {
+    state.camera.x = state.canvasWidth / 2;
+    state.camera.y = state.canvasHeight / 2;
+  }
   
   // Reinitialize background items
   initEnvironment(state.canvasWidth, state.canvasHeight);
@@ -417,10 +428,10 @@ canvas.addEventListener('drop', (e) => {
   e.preventDefault();
   const itemId = e.dataTransfer.getData('text/plain');
   
-  // Calculate canvas local coords
-  const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
+  // Calculate canvas local coords (transformed to world space)
+  const pos = getMousePos(e);
+  const mx = pos.x;
+  const my = pos.y;
 
   let type = '';
   if (itemId === 'toy-yarn') type = 'yarn';
@@ -446,9 +457,16 @@ function getMousePos(e) {
     clientY = e.changedTouches[0].clientY;
   }
   
+  const canvasX = clientX - rect.left;
+  const canvasY = clientY - rect.top;
+  
+  // Transform screen to world coordinates using the camera matrix
+  const worldX = state.camera.x + (canvasX - state.canvasWidth / 2) / state.camera.zoom;
+  const worldY = state.camera.y + (canvasY - state.canvasHeight / 2) / state.camera.zoom;
+  
   return {
-    x: clientX - rect.left,
-    y: clientY - rect.top
+    x: worldX,
+    y: worldY
   };
 }
 
@@ -646,6 +664,13 @@ canvas.addEventListener('dblclick', (e) => {
   const clickedToyIdx = state.toys.findIndex(t => t.isClicked(mx, my));
   if (clickedToyIdx > -1) {
     removeIndividualToy(state.toys[clickedToyIdx], clickedToyIdx);
+  } else {
+    // Double click empty space: stop tracking camera
+    if (state.camera.targetCat) {
+      state.camera.targetCat = null;
+      document.getElementById('camera-hud').classList.add('hidden');
+      playChime();
+    }
   }
 });
 
@@ -672,6 +697,14 @@ const barHunger = document.getElementById('bar-hunger');
 const labelAffection = document.getElementById('label-affection');
 const labelEnergy = document.getElementById('label-energy');
 const labelHunger = document.getElementById('label-hunger');
+
+// Camera & Cinematic UI Elements
+const trackBtn = document.getElementById('track-btn');
+const showUiBtn = document.getElementById('show-ui-btn');
+const hideUiBtn = document.getElementById('hide-ui-btn');
+const cameraHud = document.getElementById('camera-hud');
+const cameraTargetName = document.getElementById('camera-target-name');
+const stopTrackBtn = document.getElementById('stop-track-btn');
 
 const breedMap = {
   tabby: '치즈/실버 태비',
@@ -717,6 +750,47 @@ function hideCatDetails() {
 
 document.getElementById('close-card-btn').addEventListener('click', hideCatDetails);
 
+// Camera Tracking Start
+trackBtn.addEventListener('click', () => {
+  if (!state.selectedCat) return;
+  state.camera.targetCat = state.selectedCat;
+  
+  // Show tracking HUD
+  cameraTargetName.textContent = state.selectedCat.name;
+  cameraHud.classList.remove('hidden');
+  
+  // Close details card to keep the view clean
+  hideCatDetails();
+  playChime();
+});
+
+// Camera Tracking Stop
+stopTrackBtn.addEventListener('click', () => {
+  state.camera.targetCat = null;
+  cameraHud.classList.add('hidden');
+  playChime();
+});
+
+// Cinematic Mode (Hide UI)
+hideUiBtn.addEventListener('click', () => {
+  document.body.classList.add('ui-hidden');
+  showUiBtn.classList.remove('hidden');
+  playChime();
+});
+
+// Restore UI (Show UI)
+showUiBtn.addEventListener('click', () => {
+  document.body.classList.remove('ui-hidden');
+  showUiBtn.classList.add('hidden');
+  
+  // Restoring UI stops camera tracking
+  if (state.camera.targetCat) {
+    state.camera.targetCat = null;
+    cameraHud.classList.add('hidden');
+  }
+  playChime();
+});
+
 // Cat Rename
 document.getElementById('rename-btn').addEventListener('click', () => {
   if (!state.selectedCat) return;
@@ -737,6 +811,12 @@ document.getElementById('release-btn').addEventListener('click', () => {
     // Remove cat
     const catId = cat.id;
     state.cats = state.cats.filter(c => c.id !== catId);
+    
+    // Clear tracking if released cat was targeted
+    if (state.camera.targetCat && state.camera.targetCat.id === catId) {
+      state.camera.targetCat = null;
+      cameraHud.classList.add('hidden');
+    }
     
     // Clear any boxes claimed
     state.toys.forEach(t => {
@@ -937,6 +1017,30 @@ function loop(timestamp) {
   const delta = (timestamp - state.lastTime) / 1000; // seconds elapsed
   state.lastTime = timestamp;
 
+  // Camera tracking interpolation
+  let targetX = state.canvasWidth / 2;
+  let targetY = state.canvasHeight / 2;
+  let targetZoom = 1.0;
+
+  if (state.camera.targetCat) {
+    const stillExists = state.cats.some(c => c.id === state.camera.targetCat.id);
+    if (!stillExists) {
+      state.camera.targetCat = null;
+      document.getElementById('camera-hud').classList.add('hidden');
+    } else {
+      const cat = state.camera.targetCat;
+      targetX = cat.x;
+      targetY = cat.y - (cat.height * cat.scale) / 2;
+      targetZoom = 1.8;
+    }
+  }
+
+  // Smooth camera lerp
+  const lerpSpeed = 0.08;
+  state.camera.x += (targetX - state.camera.x) * lerpSpeed;
+  state.camera.y += (targetY - state.camera.y) * lerpSpeed;
+  state.camera.zoom += (targetZoom - state.camera.zoom) * lerpSpeed;
+
   // 1. Update Environment Physics
   updateEnvironment(state.canvasWidth, state.canvasHeight, state.weather);
 
@@ -992,6 +1096,12 @@ function loop(timestamp) {
     }
   });
 
+  ctx.save();
+  // Apply camera matrix
+  ctx.translate(state.canvasWidth / 2, state.canvasHeight / 2);
+  ctx.scale(state.camera.zoom, state.camera.zoom);
+  ctx.translate(-state.camera.x, -state.camera.y);
+
   // 2. Draw Environment Background
   drawBackground(ctx, state.canvasWidth, state.canvasHeight, state.weather);
 
@@ -1033,6 +1143,8 @@ function loop(timestamp) {
   if (state.laser.active) {
     drawLaserDot(ctx, state.laser.x, state.laser.y);
   }
+
+  ctx.restore();
 
   // 7. Draw Weather Particles (top layer)
   drawEnvironmentParticles(ctx);
