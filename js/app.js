@@ -506,17 +506,6 @@ function showCatDetails(cat) {
   detailGender.textContent = `성별: ${cat.gender === 'male' ? '수컷 ♂' : '암컷 ♀'}`;
   
   updateDetailsBars();
-  
-  // Update detail accessories selector UI to match selected cat's accessories
-  const detailAccSelectorItems = document.querySelectorAll('#detail-accessory-selector .grid-item');
-  detailAccSelectorItems.forEach(item => {
-    const acc = item.dataset.acc;
-    if (cat.accessories.includes(acc)) {
-      item.classList.add('selected');
-    } else {
-      item.classList.remove('selected');
-    }
-  });
 
   detailsCard.classList.remove('hidden');
 }
@@ -575,56 +564,7 @@ document.getElementById('release-btn').addEventListener('click', () => {
   }
 });
 
-// Accessory toggles on the detail card
-const accessoryMap = {
-  collar: '목방울',
-  ribbon: '리본',
-  hat: '꼬깔모자',
-  glasses: '선글라스'
-};
 
-const detailAccSelectorItems = document.querySelectorAll('#detail-accessory-selector .grid-item');
-detailAccSelectorItems.forEach(item => {
-  item.addEventListener('click', () => {
-    if (!state.selectedCat) return;
-    const cat = state.selectedCat;
-    const acc = item.dataset.acc;
-    
-    // Check if new accessory combo already exists
-    let newAccs = [...cat.accessories];
-    const idx = newAccs.indexOf(acc);
-    if (idx > -1) {
-      newAccs.splice(idx, 1);
-    } else {
-      newAccs.push(acc);
-    }
-    
-    const sortedNewAccs = [...newAccs].sort().join(',');
-    const isDuplicate = state.cats.some(otherCat => {
-      if (otherCat.id === cat.id) return false;
-      const breedSame = otherCat.breed === cat.breed;
-      const sortedOtherAccs = [...otherCat.accessories].sort().join(',');
-      return breedSame && sortedNewAccs === sortedOtherAccs;
-    });
-    
-    if (isDuplicate) {
-      alert('이미 똑같은 디자인(동일한 묘종과 악세서리 조합)을 가진 다른 고양이가 있습니다!\n중복 디자인을 피하기 위해 다른 악세서리를 장착해 주세요.');
-      return;
-    }
-    
-    // Toggle accessory
-    if (idx > -1) {
-      cat.accessories.splice(idx, 1);
-      item.classList.remove('selected');
-      addLog(`🎀 <strong>${cat.name}</strong>에게서 <strong>${accessoryMap[acc]}</strong>(을)를 제거했습니다.`);
-    } else {
-      cat.accessories.push(acc);
-      item.classList.add('selected');
-      addLog(`🎀 <strong>${cat.name}</strong>에게 <strong>${accessoryMap[acc]}</strong>(을)를 장착했습니다.`);
-    }
-    playChime();
-  });
-});
 
 // Sidebar Drawer (Cat Creator) Controller
 const sidebar = document.getElementById('sidebar');
@@ -647,22 +587,6 @@ breedSelectorItems.forEach(item => {
   });
 });
 
-const selectedAccessories = new Set();
-const accessorySelectorItems = document.querySelectorAll('#accessory-selector .grid-item');
-accessorySelectorItems.forEach(item => {
-  item.addEventListener('click', () => {
-    const acc = item.dataset.acc;
-    if (selectedAccessories.has(acc)) {
-      selectedAccessories.delete(acc);
-      item.classList.remove('selected');
-    } else {
-      selectedAccessories.add(acc);
-      item.classList.add('selected');
-    }
-    playChime();
-  });
-});
-
 // Add Cat button
 const createCatBtn = document.getElementById('create-cat-btn');
 const catNameInput = document.getElementById('cat-name-input');
@@ -679,21 +603,7 @@ createCatBtn.addEventListener('click', () => {
     return;
   }
 
-  // Prevent duplicate designs
-  const sortedSelectedAccs = Array.from(selectedAccessories).sort().join(',');
-  const isDuplicate = state.cats.some(cat => {
-    const breedSame = cat.breed === selectedBreed;
-    const sortedOtherAccs = Array.from(cat.accessories).sort().join(',');
-    return breedSame && sortedSelectedAccs === sortedOtherAccs;
-  });
-
-  if (isDuplicate) {
-    alert('이미 똑같은 디자인(동일한 묘종과 악세서리 조합)의 고양이가 안식처에 있습니다!\n다른 악세서리를 장착하거나 묘종을 변경해 주세요.');
-    return;
-  }
-
   const options = {
-    accessories: Array.from(selectedAccessories),
     x: 100 + Math.random() * (state.canvasWidth - 200)
   };
 
@@ -705,8 +615,6 @@ createCatBtn.addEventListener('click', () => {
   
   // Reset fields
   catNameInput.value = '';
-  selectedAccessories.clear();
-  accessorySelectorItems.forEach(i => i.classList.remove('selected'));
   sidebar.classList.remove('open');
   
   playMeow(selectedBreed === 'siamese' ? 'low' : 'happy');

@@ -439,7 +439,10 @@ async function processBreed(breedKey) {
   const sleepFrames = createBreathingFrames(baseFrames[2] || baseFrames[0]);
 
   // Play frames: use play sprite + idle for a 2-frame pounce cycle
-  const playFrame = baseFrames[3] || baseFrames[1] || baseFrames[0];
+  // Ginger's play/pounce pose is frame 4 (since it has 5 frames in total, and frame 2/3 are sleep).
+  const playFrame = spriteKey === 'ginger' 
+    ? (baseFrames[4] || baseFrames[0]) 
+    : (baseFrames[3] || baseFrames[1] || baseFrames[0]);
   const playFrames = [playFrame, baseFrames[0]]; // pounce → reset
 
   const result = {
@@ -455,35 +458,7 @@ async function processBreed(breedKey) {
   return result;
 }
 
-// Global accessory sprite cache
-const accessoryCache = {};
 
-/** Crop transparent margins from a canvas to isolate the content */
-function cropToContent(processed) {
-  const ctx = processed.getContext('2d');
-  const b = findBounds(ctx, 0, 0, processed.width, processed.height);
-  const fc = document.createElement('canvas');
-  fc.width = b.w;
-  fc.height = b.h;
-  fc.getContext('2d').drawImage(processed, b.x, b.y, b.w, b.h, 0, 0, b.w, b.h);
-  return fc;
-}
-
-// Load all accessories
-async function loadAccessories() {
-  const accs = ['collar', 'ribbon', 'hat', 'glasses'];
-  await Promise.all(accs.map(async (acc) => {
-    const img = await tryLoadImage(`assets/sprites/acc_${acc}.png`);
-    if (img) {
-      const bgRemoved = removeWhiteBackground(img);
-      accessoryCache[acc] = cropToContent(bgRemoved);
-    }
-  }));
-}
-
-export function getAccessorySprite(acc) {
-  return accessoryCache[acc] || null;
-}
 
 /**
  * Load ALL breed sprites. Call once before game loop starts.
@@ -491,8 +466,7 @@ export function getAccessorySprite(acc) {
 export async function loadAllSprites() {
   const breeds = Object.keys(BREED_SPRITE_MAP);
 
-  // Load accessories first
-  await loadAccessories();
+
 
   // Process unique breeds first
   const uniqueKeys = [...new Set(Object.values(BREED_SPRITE_MAP))];

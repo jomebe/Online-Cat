@@ -1,33 +1,7 @@
 // js/cat.js
-import { playMeow, startPurr, stopPurr } from './audio.js';
-import { getSprite, getAccessorySprite } from './spriteLoader.js';
+import { getSprite } from './spriteLoader.js';
 
-const ACCESSORY_OFFSETS = {
-  default: {
-    collar:  { dx: -0.18, dy: -0.36, ds: 0.28 },
-    ribbon:  { dx: -0.18, dy: -0.36, ds: 0.28 },
-    hat:     { dx: -0.20, dy: -0.82, ds: 0.38 },
-    glasses: { dx: -0.28, dy: -0.52, ds: 0.28 },
-  },
-  ginger: {
-    collar:  { dx: -0.15, dy: -0.36, ds: 0.28 },
-    ribbon:  { dx: -0.15, dy: -0.36, ds: 0.28 },
-    hat:     { dx: -0.18, dy: -0.82, ds: 0.38 },
-    glasses: { dx: -0.26, dy: -0.54, ds: 0.28 },
-  },
-  siamese: {
-    collar:  { dx: -0.16, dy: -0.36, ds: 0.28 },
-    ribbon:  { dx: -0.16, dy: -0.36, ds: 0.28 },
-    hat:     { dx: -0.20, dy: -0.84, ds: 0.38 },
-    glasses: { dx: -0.28, dy: -0.54, ds: 0.28 },
-  },
-  grey: {
-    collar:  { dx: -0.15, dy: -0.36, ds: 0.28 },
-    ribbon:  { dx: -0.15, dy: -0.36, ds: 0.28 },
-    hat:     { dx: -0.20, dy: -0.84, ds: 0.38 },
-    glasses: { dx: -0.26, dy: -0.54, ds: 0.28 },
-  }
-};
+import { playMeow, startPurr, stopPurr } from './audio.js';
 
 export class Cat {
   constructor(name, breed, options = {}) {
@@ -621,10 +595,7 @@ export class Cat {
     ctx.fill();
     ctx.globalAlpha = 1.0;
 
-    // Accessories overlay
-    if (this.accessories.length > 0) {
-      this.drawAccessories(ctx, renderW, renderH);
-    }
+
 
     ctx.restore();
 
@@ -670,22 +641,7 @@ export class Cat {
     });
   }
 
-  // Draw accessories using generated sprite images
-  drawAccessories(ctx, renderW, renderH) {
-    this.accessories.forEach(acc => {
-      const img = getAccessorySprite(acc);
-      if (!img) return;
 
-      const offsets = (ACCESSORY_OFFSETS[this.breed] || ACCESSORY_OFFSETS.default)[acc] || ACCESSORY_OFFSETS.default[acc];
-      
-      const aw = renderW * offsets.ds;
-      const ah = aw * (img.height / img.width);
-      const ax = renderW * offsets.dx - aw * 0.5;
-      const ay = -renderH * Math.abs(offsets.dy) - ah * 0.5;
-
-      ctx.drawImage(img, ax, ay, aw, ah);
-    });
-  }
 
   // Check if click coordinates hit the cat body bounds (scaled proportionally)
   isClicked(mx, my) {
