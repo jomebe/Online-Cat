@@ -1067,6 +1067,27 @@ function loop(timestamp) {
   state.camera.y += (targetY - state.camera.y) * lerpSpeed;
   state.camera.zoom += (targetZoom - state.camera.zoom) * lerpSpeed;
 
+  // Clamp camera position to prevent seeing outside the room boundaries when zoomed in
+  const visibleW = state.canvasWidth / state.camera.zoom;
+  const visibleH = state.canvasHeight / state.camera.zoom;
+  
+  const minX = visibleW / 2;
+  const maxX = state.canvasWidth - visibleW / 2;
+  const minY = visibleH / 2;
+  const maxY = state.canvasHeight - visibleH / 2;
+
+  if (maxX >= minX) {
+    state.camera.x = Math.max(minX, Math.min(maxX, state.camera.x));
+  } else {
+    state.camera.x = state.canvasWidth / 2;
+  }
+
+  if (maxY >= minY) {
+    state.camera.y = Math.max(minY, Math.min(maxY, state.camera.y));
+  } else {
+    state.camera.y = state.canvasHeight / 2;
+  }
+
   // 1. Update Environment Physics
   updateEnvironment(state.canvasWidth, state.canvasHeight, state.weather);
 
