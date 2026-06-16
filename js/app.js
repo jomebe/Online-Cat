@@ -829,6 +829,20 @@ document.getElementById('rename-btn').addEventListener('click', () => {
   }
 });
 
+// Observation Mode Cat Rename
+document.getElementById('obs-rename-btn').addEventListener('click', () => {
+  const observedCat = state.cats.find(c => c.observationMode);
+  if (!observedCat) return;
+  
+  const newName = prompt('새로운 이름을 지어주세요 (최대 8자):', observedCat.name);
+  if (newName && newName.trim().length > 0) {
+    const cleaned = newName.trim().substring(0, 8);
+    addLog(`<strong>${observedCat.name}</strong>의 이름이 <strong>${cleaned}</strong>(으)로 변경되었습니다.`);
+    observedCat.name = cleaned;
+    document.getElementById('obs-cat-name').textContent = cleaned;
+  }
+});
+
 // Release Cat (Adoption Out)
 document.getElementById('release-btn').addEventListener('click', () => {
   if (!state.selectedCat) return;
@@ -1191,6 +1205,11 @@ function loop(timestamp) {
     drawLaserDot(ctx, state.laser.x, state.laser.y);
   }
 
+  // 6.5 Draw Cat Overlays (name tags, hearts, stars) on top of all toys
+  state.cats.forEach(cat => {
+    cat.drawOverlay(ctx);
+  });
+
   ctx.restore();
 
   // 7. Draw Weather Particles (top layer)
@@ -1205,8 +1224,24 @@ function loop(timestamp) {
   if (observedCat) {
     document.body.classList.add('observation-active');
     document.getElementById('obs-cat-name').textContent = observedCat.name;
+    
+    // Set Breed and Gender details
+    const breedText = breedMap[observedCat.breed] || observedCat.breed;
+    const genderText = observedCat.gender === 'male' ? '수컷 ♂' : '암컷 ♀';
+    document.getElementById('obs-cat-details').textContent = `묘종: ${breedText} · 성별: ${genderText}`;
+    
+    // Affection
     document.getElementById('obs-bar-affection').style.width = observedCat.affection + '%';
+    document.getElementById('obs-label-affection').textContent = Math.round(observedCat.affection) + '%';
+    
+    // Energy
     document.getElementById('obs-bar-energy').style.width = observedCat.energy + '%';
+    document.getElementById('obs-label-energy').textContent = Math.round(observedCat.energy) + '%';
+    
+    // Hunger
+    document.getElementById('obs-bar-hunger').style.width = observedCat.hunger + '%';
+    document.getElementById('obs-label-hunger').textContent = Math.round(observedCat.hunger) + '%';
+    
     obsHud.classList.add('active');
   } else {
     document.body.classList.remove('observation-active');

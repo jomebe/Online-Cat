@@ -762,6 +762,21 @@ header, .activity-log, .toy-box, .cat-details-card, .sidebar, .pet-indicator {
   box-shadow: 0 0 4px rgba(76, 209, 55, 0.4);
 }
 
+.obs-bar-fill.hunger {
+  background: #ff9f43;
+  box-shadow: 0 0 4px rgba(255, 159, 67, 0.4);
+}
+
+.dark-theme .observation-hud {
+  background: rgba(15, 23, 42, 0.75);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: var(--text-light);
+}
+
+.dark-theme .obs-stat-item {
+  color: var(--text-light);
+}
+
 .exit-obs-btn {
   background: var(--primary);
   color: white;

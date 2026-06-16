@@ -27,15 +27,26 @@
     <!-- Minimal Observation HUD -->
     <div id="observation-hud" class="observation-hud">
       <div class="obs-info">
-        <span class="obs-title">🔍 관찰 모드: <strong id="obs-cat-name">고양이</strong></span>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="obs-title">🔍 관찰 모드: <strong id="obs-cat-name">고양이</strong></span>
+          <button id="obs-rename-btn" style="background:rgba(255,255,255,0.25); border:none; cursor:pointer; font-size:11px; padding:2px 8px; border-radius:10px; font-family:var(--font-title); transition:all 0.2s;">✏️ 이름 변경</button>
+        </div>
+        <div id="obs-cat-details" style="font-size:12px; opacity:0.8; margin-top:2px;">종류: 태비 · 성별: ♀</div>
         <div class="obs-stats">
           <div class="obs-stat-item">
             <span>💖 친밀도</span>
             <div class="obs-bar-bg"><div id="obs-bar-affection" class="obs-bar-fill affection"></div></div>
+            <span id="obs-label-affection" style="font-size:11px; min-width:28px; text-align:right; font-weight:600;">80%</span>
           </div>
           <div class="obs-stat-item">
             <span>⚡ 에너지</span>
             <div class="obs-bar-bg"><div id="obs-bar-energy" class="obs-bar-fill energy"></div></div>
+            <span id="obs-label-energy" style="font-size:11px; min-width:28px; text-align:right; font-weight:600;">50%</span>
+          </div>
+          <div class="obs-stat-item">
+            <span>🍲 포만감</span>
+            <div class="obs-bar-bg"><div id="obs-bar-hunger" class="obs-bar-fill hunger"></div></div>
+            <span id="obs-label-hunger" style="font-size:11px; min-width:28px; text-align:right; font-weight:600;">30%</span>
           </div>
         </div>
       </div>

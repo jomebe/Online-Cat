@@ -602,6 +602,12 @@ export class Cat {
 
     ctx.restore();
 
+  }
+
+  // Draw Name tag, hearts, and stars overlay (drawn on top of all toys/boxes)
+  drawOverlay(ctx) {
+    const renderH = this.height * this.scale;
+
     // Draw Name text overlay (always in screen space, not flipped)
     ctx.save();
     ctx.fillStyle = '#2f3542';
