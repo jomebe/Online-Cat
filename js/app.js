@@ -1472,14 +1472,14 @@ function setupAuthListener() {
 }
 
 // Load sprites and start the game loop
-// Strategy: start game loop immediately with placeholder sprites,
-// then load real sprites in background for instant page feel.
+// Strategy: start game loop immediately with default cats,
+// then load real sprites in background and sync with DB if logged in.
 async function initGame() {
-  // 1. Start game loop instantly (no sprite wait)
-  addInitialCatsPlaceholder();
+  // 1. Populate default cats instantly so room is alive immediately
+  addInitialCats();
   requestAnimationFrame(loop);
 
-  // 2. Initialize auth/db in parallel with sprite loading
+  // 2. Initialize auth/db in parallel
   const key = getSupabaseAnonKey();
   if (key) {
     initSupabaseClient();
@@ -1493,20 +1493,13 @@ async function initGame() {
           authBtn.classList.add('logged-in');
           authBtn.title = `로그인 계정: ${session.user.email}`;
           addLog(`🔑 기존 세션(${session.user.email})을 불러왔습니다.`);
-          // Load cats from database (non-blocking)
+          // Load cats from database (will overwrite state.cats dynamically once fetched)
           loadCatsFromDatabase();
-        } else {
-          addInitialCats();
         }
       } catch (err) {
         console.error('Failed to get session:', err.message);
-        addInitialCats();
       }
-    } else {
-      addInitialCats();
     }
-  } else {
-    addInitialCats();
   }
 
   // 3. Load sprites in background (non-blocking for game loop)
@@ -1518,15 +1511,6 @@ async function initGame() {
   }
 
   addLog('모카, 코코, 라떼 세 고양이가 한가롭게 노닐고 있습니다. 쓰다듬어보세요!');
-}
-
-// Lightweight placeholder so cats exist before sprites are ready
-function addInitialCatsPlaceholder() {
-  if (state.cats.length === 0) {
-    // Will be overwritten by addInitialCats() once auth resolves,
-    // but ensures the canvas isn't empty on first frame.
-    // (no-op if cats already populated)
-  }
 }
 
 initGame();

@@ -1,5 +1,5 @@
 // js/cat.js
-import { getSprite } from './spriteLoader.js';
+import { getSprite, isSpriteLoaded } from './spriteLoader.js';
 
 import { playMeow, startPurr, stopPurr } from './audio.js';
 
@@ -489,8 +489,8 @@ export class Cat {
 
   // Draw the cat using animated sprites
   draw(ctx) {
-    // Lazy-load sprite frames if not yet set
-    if (!this.spriteFrames) {
+    // Lazy-load sprite frames if not yet set, or replace if current is a fallback and real sprite is now loaded
+    if (!this.spriteFrames || (this.spriteFrames.isFallback && isSpriteLoaded(this.breed))) {
       this.spriteFrames = getSprite(this.breed);
     }
 

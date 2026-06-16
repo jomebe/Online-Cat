@@ -52,6 +52,7 @@ const PET_LAYOUT = {
 // ── Global sprite cache ──
 // breed → { idle: [Canvas], walk: [Canvas,...], sleep: [Canvas], play: [Canvas], pet: [Canvas,...] }
 const spriteCache = {};
+const loadingBreeds = {};
 
 // ────────────────────────────────────────────
 // Image loading
@@ -75,98 +76,113 @@ function tryLoadImage(src) {
 }
 
 // ────────────────────────────────────────────
-// Background removal via edge flood-fill
+// Background removal via edge flood-fill (Asynchronous using Web Worker)
 // Only removes white pixels connected to image edges,
 // preserving white cat fur inside the outline.
 // ────────────────────────────────────────────
-function removeWhiteBackground(image) {
-  const canvas = document.createElement('canvas');
-  const w = image.width;
-  const h = image.height;
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(image, 0, 0);
+function removeWhiteBackgroundAsync(image) {
+  return new Promise((resolve) => {
+    const canvas = document.createElement('canvas');
+    const w = image.width;
+    const h = image.height;
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(image, 0, 0);
 
-  const imageData = ctx.getImageData(0, 0, w, h);
-  const data = imageData.data;
-  const total = w * h;
+    const imageData = ctx.getImageData(0, 0, w, h);
 
-  // Helper: check if pixel at flat index is near-white
-  const isNearWhite = (pos) => {
-    const i = pos * 4;
-    return data[i] > 225 && data[i + 1] > 225 && data[i + 2] > 225 && data[i + 3] > 100;
-  };
+    const workerCode = `
+      self.onmessage = function(e) {
+        const { imageData, w, h } = e.data;
+        const data = imageData.data;
+        const total = w * h;
 
-  // Visited & background masks
-  const visited = new Uint8Array(total);
-  const isBg = new Uint8Array(total);
+        const isNearWhite = (pos) => {
+          const i = pos * 4;
+          return data[i] > 225 && data[i + 1] > 225 && data[i + 2] > 225 && data[i + 3] > 100;
+        };
 
-  // BFS queue (use array + pointer for O(1) dequeue)
-  const queue = [];
-  let head = 0;
+        const visited = new Uint8Array(total);
+        const isBg = new Uint8Array(total);
+        const queue = [];
+        let head = 0;
 
-  // Seed: all edge pixels that are near-white
-  for (let x = 0; x < w; x++) {
-    const top = x, bot = (h - 1) * w + x;
-    if (isNearWhite(top) && !visited[top]) { visited[top] = 1; isBg[top] = 1; queue.push(top); }
-    if (isNearWhite(bot) && !visited[bot]) { visited[bot] = 1; isBg[bot] = 1; queue.push(bot); }
-  }
-  for (let y = 1; y < h - 1; y++) {
-    const left = y * w, right = y * w + (w - 1);
-    if (isNearWhite(left) && !visited[left]) { visited[left] = 1; isBg[left] = 1; queue.push(left); }
-    if (isNearWhite(right) && !visited[right]) { visited[right] = 1; isBg[right] = 1; queue.push(right); }
-  }
+        // Seed: all edge pixels that are near-white
+        for (let x = 0; x < w; x++) {
+          const top = x, bot = (h - 1) * w + x;
+          if (isNearWhite(top) && !visited[top]) { visited[top] = 1; isBg[top] = 1; queue.push(top); }
+          if (isNearWhite(bot) && !visited[bot]) { visited[bot] = 1; isBg[bot] = 1; queue.push(bot); }
+        }
+        for (let y = 1; y < h - 1; y++) {
+          const left = y * w, right = y * w + (w - 1);
+          if (isNearWhite(left) && !visited[left]) { visited[left] = 1; isBg[left] = 1; queue.push(left); }
+          if (isNearWhite(right) && !visited[right]) { visited[right] = 1; isBg[right] = 1; queue.push(right); }
+        }
 
-  // BFS flood fill
-  while (head < queue.length) {
-    const pos = queue[head++];
-    const x = pos % w;
-    const y = (pos - x) / w;
+        // BFS flood fill
+        while (head < queue.length) {
+          const pos = queue[head++];
+          const x = pos % w;
+          const y = (pos - x) / w;
 
-    // 4-connected neighbors
-    const neighbors = [];
-    if (x > 0) neighbors.push(pos - 1);
-    if (x < w - 1) neighbors.push(pos + 1);
-    if (y > 0) neighbors.push(pos - w);
-    if (y < h - 1) neighbors.push(pos + w);
+          if (x > 0) {
+            const n = pos - 1;
+            if (!visited[n] && isNearWhite(n)) { visited[n] = 1; isBg[n] = 1; queue.push(n); }
+          }
+          if (x < w - 1) {
+            const n = pos + 1;
+            if (!visited[n] && isNearWhite(n)) { visited[n] = 1; isBg[n] = 1; queue.push(n); }
+          }
+          if (y > 0) {
+            const n = pos - w;
+            if (!visited[n] && isNearWhite(n)) { visited[n] = 1; isBg[n] = 1; queue.push(n); }
+          }
+          if (y < h - 1) {
+            const n = pos + w;
+            if (!visited[n] && isNearWhite(n)) { visited[n] = 1; isBg[n] = 1; queue.push(n); }
+          }
+        }
 
-    for (const npos of neighbors) {
-      if (!visited[npos] && isNearWhite(npos)) {
-        visited[npos] = 1;
-        isBg[npos] = 1;
-        queue.push(npos);
-      }
-    }
-  }
+        // Apply transparency to background pixels
+        for (let i = 0; i < total; i++) {
+          if (isBg[i]) {
+            data[i * 4 + 3] = 0; // fully transparent
+          }
+        }
 
-  // Apply transparency to background pixels
-  for (let i = 0; i < total; i++) {
-    if (isBg[i]) {
-      data[i * 4 + 3] = 0; // fully transparent
-    }
-  }
+        // Anti-alias: soften pixels adjacent to background
+        for (let i = 0; i < total; i++) {
+          if (!isBg[i] && data[i * 4 + 3] > 0) {
+            const x = i % w;
+            const y = (i - x) / w;
+            let bgNeighbors = 0;
+            if (x > 0 && isBg[i - 1]) bgNeighbors++;
+            if (x < w - 1 && isBg[i + 1]) bgNeighbors++;
+            if (y > 0 && isBg[i - w]) bgNeighbors++;
+            if (y < h - 1 && isBg[i + w]) bgNeighbors++;
 
-  // Anti-alias: soften pixels adjacent to background
-  for (let i = 0; i < total; i++) {
-    if (!isBg[i] && data[i * 4 + 3] > 0) {
-      const x = i % w;
-      const y = (i - x) / w;
-      let bgNeighbors = 0;
-      if (x > 0 && isBg[i - 1]) bgNeighbors++;
-      if (x < w - 1 && isBg[i + 1]) bgNeighbors++;
-      if (y > 0 && isBg[i - w]) bgNeighbors++;
-      if (y < h - 1 && isBg[i + w]) bgNeighbors++;
+            if (bgNeighbors >= 2) {
+              data[i * 4 + 3] = Math.max(60, data[i * 4 + 3] - 80);
+            }
+          }
+        }
 
-      if (bgNeighbors >= 2) {
-        // Edge pixel: reduce alpha for smooth anti-aliasing
-        data[i * 4 + 3] = Math.max(60, data[i * 4 + 3] - 80);
-      }
-    }
-  }
+        self.postMessage({ imageData }, [imageData.data.buffer]);
+      };
+    `;
 
-  ctx.putImageData(imageData, 0, 0);
-  return canvas;
+    const blob = new Blob([workerCode], { type: 'application/javascript' });
+    const worker = new Worker(URL.createObjectURL(blob));
+
+    worker.onmessage = (e) => {
+      ctx.putImageData(e.data.imageData, 0, 0);
+      worker.terminate();
+      resolve(canvas);
+    };
+
+    worker.postMessage({ imageData, w, h }, [imageData.data.buffer]);
+  });
 }
 
 // ────────────────────────────────────────────
@@ -392,7 +408,7 @@ async function processBreed(breedKey) {
 
   // Process base sheet
   const layout = LAYOUT[spriteKey] || { cols: 2, rows: 2, count: 4 };
-  const processedBase = removeWhiteBackground(baseImg);
+  const processedBase = await removeWhiteBackgroundAsync(baseImg);
   let baseFrames;
   if (spriteKey === 'ginger') {
     baseFrames = splitGingerHybrid(processedBase, layout.count);
@@ -404,7 +420,7 @@ async function processBreed(breedKey) {
   // Process walk cycle strip
   let walkFrames;
   if (walkImg) {
-    const processedWalk = removeWhiteBackground(walkImg);
+    const processedWalk = await removeWhiteBackgroundAsync(walkImg);
     const wLayout = WALK_LAYOUT[spriteKey] || { cols: 4, rows: 1, count: 4 };
     let frames;
     if (spriteKey === 'ginger') {
@@ -424,7 +440,7 @@ async function processBreed(breedKey) {
   // Process pet animation strip
   let petFrames;
   if (petImg) {
-    const processedPet = removeWhiteBackground(petImg);
+    const processedPet = await removeWhiteBackgroundAsync(petImg);
     const pLayout = PET_LAYOUT[spriteKey] || { cols: 4, rows: 1, count: 4 };
     petFrames = splitIntoFrames(processedPet, pLayout.cols, pLayout.rows, pLayout.count);
   } else {
@@ -461,31 +477,68 @@ async function processBreed(breedKey) {
 
 
 /**
- * Load ALL breed sprites. Call once before game loop starts.
+ * Load initial startup breed sprites. Call once before game loop starts.
  */
 export async function loadAllSprites() {
+  // Only preload default/initial breeds to prevent startup lag
+  const startupBreeds = ['tabby', 'ginger', 'tuxedo', 'siamese'];
+  await Promise.all(startupBreeds.map(b => processBreed(b)));
+  
+  // Lazily process the other breeds in the background so they are ready soon,
+  // but do not block startup. We stagger them to keep main thread smooth.
   const breeds = Object.keys(BREED_SPRITE_MAP);
-
-
-
-  // Process unique breeds first
-  const uniqueKeys = [...new Set(Object.values(BREED_SPRITE_MAP))];
-  const primaryBreeds = uniqueKeys.map(k => breeds.find(b => BREED_SPRITE_MAP[b] === k));
-  await Promise.all(primaryBreeds.map(b => processBreed(b)));
-
-  // Then map shared breeds
+  let delay = 300;
   for (const b of breeds) {
-    if (!spriteCache[b]) await processBreed(b);
+    if (!spriteCache[b]) {
+      const breedToLoad = b;
+      setTimeout(() => {
+        if (!spriteCache[breedToLoad]) {
+          processBreed(breedToLoad).catch(() => {});
+        }
+      }, delay);
+      delay += 300; // stagger next load
+    }
   }
 
-  console.log(`[SpriteLoader] Loaded ${Object.keys(spriteCache).length} breeds with animation frames`);
+  console.log(`[SpriteLoader] Startup breeds loaded`);
   return spriteCache;
+}
+
+/**
+ * Check if sprite frames for a breed are fully loaded.
+ */
+export function isSpriteLoaded(breed) {
+  return !!spriteCache[breed];
 }
 
 /**
  * Get sprite frames for a breed.
  * Returns { idle: [Canvas,...], walk: [Canvas,...], ... }
+ * If not loaded, triggers lazy load in the background and returns a temporary fallback.
  */
 export function getSprite(breed) {
-  return spriteCache[breed] || spriteCache['tabby'] || null;
+  if (spriteCache[breed]) {
+    return spriteCache[breed];
+  }
+
+  // Trigger lazy loading
+  if (!loadingBreeds[breed]) {
+    loadingBreeds[breed] = true;
+    processBreed(breed).then(() => {
+      delete loadingBreeds[breed];
+    }).catch(err => {
+      console.warn(`[SpriteLoader] Failed to lazily load breed "${breed}":`, err);
+      delete loadingBreeds[breed];
+    });
+  }
+
+  // Fallback: return tabby or ginger, but mark as fallback
+  const fallback = spriteCache['tabby'] || spriteCache['ginger'] || spriteCache[Object.keys(spriteCache)[0]];
+  if (fallback) {
+    return {
+      ...fallback,
+      isFallback: true
+    };
+  }
+  return null;
 }
