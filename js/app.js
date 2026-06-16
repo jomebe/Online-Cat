@@ -78,8 +78,15 @@ function addInitialCats() {
 }
 
 // Supabase Database Syncing Logic
+let isLoadingCats = false;
+
 async function loadCatsFromDatabase() {
   if (!supabase || !state.user) return;
+  if (isLoadingCats) {
+    console.log('[loadCatsFromDatabase] Already loading cats, skipping concurrent call.');
+    return;
+  }
+  isLoadingCats = true;
 
   try {
     const { data: dbCats, error } = await supabase
@@ -113,6 +120,12 @@ async function loadCatsFromDatabase() {
   } catch (err) {
     console.error('Failed to load cats from database:', err.message);
     addLog(`⚠️ 고양이 데이터를 불러오는데 실패했습니다: ${err.message}`);
+    // Fallback: if there are no cats, add default ones so the game is playable
+    if (state.cats.length === 0) {
+      addInitialCats();
+    }
+  } finally {
+    isLoadingCats = false;
   }
 }
 
@@ -1371,8 +1384,8 @@ function setupAuthListener() {
       authBtn.title = `로그인 계정: ${session.user.email}`;
       addLog(`🔑 계정(${session.user.email})으로 로그인했습니다.`);
       
-      // Load cats from Supabase
-      await loadCatsFromDatabase();
+      // Load cats from Supabase (non-blocking)
+      loadCatsFromDatabase();
     } else {
       state.user = null;
       authBtn.textContent = '🔑 로그인';
@@ -1416,7 +1429,8 @@ async function initGame() {
           authBtn.classList.add('logged-in');
           authBtn.title = `로그인 계정: ${session.user.email}`;
           addLog(`🔑 기존 세션(${session.user.email})을 불러왔습니다.`);
-          await loadCatsFromDatabase();
+          // Load cats from Supabase (non-blocking)
+          loadCatsFromDatabase();
         } else {
           addInitialCats();
         }
