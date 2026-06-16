@@ -667,6 +667,7 @@ export class Cat {
       ctx.textBaseline = 'middle';
       ctx.fillText('⭐', 0, 0);
       ctx.restore();
+    });
   }
 
   // Draw accessories using generated sprite images
