@@ -11,6 +11,7 @@ const state = {
   cats: [],
   toys: [],
   laser: { x: 0, y: 0, active: false },
+  broomActive: false, // broom clean-up tool state
   selectedCat: null,
   draggedToy: null,
   draggedCat: null,
@@ -262,40 +263,103 @@ function spawnToy(type, x, y) {
 }
 
 // HTML5 Drag Drop support for spawning from inventory
+function clearAllToys() {
+  if (state.toys.length === 0) {
+    addLog('치울 장난감이 없습니다.');
+    return;
+  }
+  
+  // Reset cats interacting with toys/boxes
+  state.cats.forEach(cat => {
+    if (cat.targetToy) {
+      cat.targetToy = null;
+      if (cat.state === 'play' || cat.state === 'eat') {
+        cat.state = 'idle';
+        cat.stateTimer = 1;
+      }
+    }
+    if (cat.inBox) {
+      cat.inBox = null;
+      if (cat.state === 'sleep') {
+        cat.state = 'idle';
+        cat.stateTimer = 1;
+      }
+    }
+  });
+  
+  state.toys = [];
+  addLog('🧹 방 안의 모든 장난감과 상자를 깨끗이 치웠습니다.');
+  playChime();
+}
+
+function removeIndividualToy(toy, index) {
+  // Reset any cat interacting with this toy
+  state.cats.forEach(cat => {
+    if (cat.targetToy === toy) {
+      cat.targetToy = null;
+      if (cat.state === 'play' || cat.state === 'eat') {
+        cat.state = 'idle';
+        cat.stateTimer = 1;
+      }
+    }
+    if (cat.inBox === toy) {
+      cat.inBox = null;
+      if (cat.state === 'sleep') {
+        cat.state = 'idle';
+        cat.stateTimer = 1;
+      }
+    }
+  });
+
+  state.toys.splice(index, 1);
+  
+  let koreanName = '장난감';
+  if (toy.type === 'yarn') koreanName = '🧶 털실 뭉치';
+  else if (toy.type === 'box') koreanName = '📦 상자';
+  else if (toy.type === 'treat') koreanName = '🐟 간식';
+  
+  addLog(`바닥에 놓인 ${koreanName}을(를) 치웠습니다.`);
+  playChime();
+}
+
+// HTML5 Drag Drop support for spawning from inventory
 const toyItems = document.querySelectorAll('.toy-item');
 toyItems.forEach(item => {
-  // Clear all toys button
+  // Clear all / individual sweep button
   if (item.id === 'toy-clear-all') {
     item.addEventListener('click', (e) => {
       e.stopPropagation();
       initAudio();
       
-      if (state.toys.length === 0) {
-        addLog('치울 장난감이 없습니다.');
-        return;
+      state.broomActive = !state.broomActive;
+      if (state.broomActive) {
+        item.classList.add('active');
+        canvas.classList.add('cursor-broom-mode');
+        addLog('🧹 빗자루 모드가 활성화되었습니다. 바닥의 장난감을 클릭하여 개별적으로 치울 수 있습니다. (더블 클릭 시 전체 청소)');
+        playChime();
+        
+        // Deactivate laser pointer if active
+        if (state.laser.active) {
+          state.laser.active = false;
+          document.getElementById('toy-laser').classList.remove('active');
+        }
+      } else {
+        item.classList.remove('active');
+        canvas.classList.remove('cursor-broom-mode');
+        addLog('🧹 빗자루 모드를 비활성화했습니다.');
       }
+    });
+
+    item.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      initAudio();
       
-      // Reset cats interacting with toys/boxes
-      state.cats.forEach(cat => {
-        if (cat.targetToy) {
-          cat.targetToy = null;
-          if (cat.state === 'play' || cat.state === 'eat') {
-            cat.state = 'idle';
-            cat.stateTimer = 1;
-          }
-        }
-        if (cat.inBox) {
-          cat.inBox = null;
-          if (cat.state === 'sleep') {
-            cat.state = 'idle';
-            cat.stateTimer = 1;
-          }
-        }
-      });
+      // Deactivate broom mode
+      state.broomActive = false;
+      item.classList.remove('active');
+      canvas.classList.remove('cursor-broom-mode');
       
-      state.toys = [];
-      addLog('🧹 방 안의 모든 장난감과 상자를 깨끗이 치웠습니다.');
-      playChime();
+      clearAllToys();
     });
     return;
   }
@@ -396,6 +460,15 @@ function handlePointerDown(e) {
   const pos = getMousePos(e);
   const mx = pos.x;
   const my = pos.y;
+
+  // 0. If broom mode is active, clicking on a toy deletes it
+  if (state.broomActive) {
+    const clickedToyIdx = state.toys.findIndex(t => t.isClicked(mx, my));
+    if (clickedToyIdx > -1) {
+      removeIndividualToy(state.toys[clickedToyIdx], clickedToyIdx);
+      return;
+    }
+  }
 
   // 1. Check if clicked a toy (for dragging it)
   if (!state.laser.active) {
@@ -509,6 +582,7 @@ function handlePointerMove(e) {
       state.isCatDragging = true;
       state.draggedCat = state.pettingCat;
       state.draggedCat.isDragging = true;
+      state.draggedCat.leaveBox(); // Leave cardboard box immediately when picked up
       state.draggedCat.stopPetting(); // stop purring
       state.dragOffset.x = mx - state.draggedCat.x;
       state.dragOffset.y = my - state.draggedCat.y;
@@ -563,7 +637,7 @@ canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
 canvas.addEventListener('touchmove', handlePointerMove, { passive: false });
 window.addEventListener('touchend', handlePointerUp);
 
-// Double-click to remove an individual toy
+// Double-click or Right-click to remove an individual toy
 canvas.addEventListener('dblclick', (e) => {
   const pos = getMousePos(e);
   const mx = pos.x;
@@ -571,35 +645,19 @@ canvas.addEventListener('dblclick', (e) => {
 
   const clickedToyIdx = state.toys.findIndex(t => t.isClicked(mx, my));
   if (clickedToyIdx > -1) {
-    const toy = state.toys[clickedToyIdx];
-    
-    // Reset any cat interacting with this toy
-    state.cats.forEach(cat => {
-      if (cat.targetToy === toy) {
-        cat.targetToy = null;
-        if (cat.state === 'play' || cat.state === 'eat') {
-          cat.state = 'idle';
-          cat.stateTimer = 1;
-        }
-      }
-      if (cat.inBox === toy) {
-        cat.inBox = null;
-        if (cat.state === 'sleep') {
-          cat.state = 'idle';
-          cat.stateTimer = 1;
-        }
-      }
-    });
+    removeIndividualToy(state.toys[clickedToyIdx], clickedToyIdx);
+  }
+});
 
-    state.toys.splice(clickedToyIdx, 1);
-    
-    let koreanName = '장난감';
-    if (toy.type === 'yarn') koreanName = '🧶 털실 뭉치';
-    else if (toy.type === 'box') koreanName = '📦 상자';
-    else if (toy.type === 'treat') koreanName = '🐟 간식';
-    
-    addLog(`바닥에 놓인 ${koreanName}을(를) 치웠습니다.`);
-    playChime();
+canvas.addEventListener('contextmenu', (e) => {
+  e.preventDefault(); // Prevent standard right-click context menu on canvas
+  const pos = getMousePos(e);
+  const mx = pos.x;
+  const my = pos.y;
+
+  const clickedToyIdx = state.toys.findIndex(t => t.isClicked(mx, my));
+  if (clickedToyIdx > -1) {
+    removeIndividualToy(state.toys[clickedToyIdx], clickedToyIdx);
   }
 });
 

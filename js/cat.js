@@ -383,6 +383,9 @@ export class Cat {
         if (foods.length > 0) {
           this.leaveBox();
           // proceed to hunger handling below
+        } else {
+          // Extremely hungry but no food: leave the box to wander/idle
+          this.leaveBox();
         }
       } else {
         // 70% chance of staying cozy inside the box

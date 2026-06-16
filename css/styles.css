@@ -620,6 +620,10 @@ button.icon-btn:active {
   cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="%23ff6b81"><path d="M12 2a5 5 0 0 0-5 5v5.3a2.5 2.5 0 0 1-5 0v-.8a1 1 0 1 0-2 0v.8a4.5 4.5 0 0 0 9 0V7a3 3 0 0 1 6 0v7a1 1 0 1 0 2 0V7a5 5 0 0 0-5-5z"/></svg>') 16 16, auto;
 }
 
+.cursor-broom-mode {
+  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><text y="24" font-size="24">🧹</text></svg>') 8 20, cell;
+}
+
 /* Keyframe Animations */
 @keyframes float {
   0% { transform: translateY(0px) rotate(0deg); }
