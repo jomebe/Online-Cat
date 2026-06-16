@@ -4,6 +4,7 @@ import { initEnvironment, updateEnvironment, drawBackground, drawEnvironmentPart
 import { Cat } from './cat.js';
 import { Toy, drawLaserDot } from './toy.js';
 import { loadAllSprites } from './spriteLoader.js';
+import { supabase, initSupabaseClient, getSupabaseAnonKey, setSupabaseAnonKey } from './supabase.js';
 
 // Application State
 const state = {
@@ -22,7 +23,9 @@ const state = {
   isMuted: true, // start muted for web policy, user can unmute
   canvasWidth: 0,
   canvasHeight: 0,
-  floorY: 0
+  floorY: 0,
+  user: null, // supabase authenticated user
+  lastSyncTime: 0 // throttle timer for DB stats updates
 };
 
 // Canvas Setup
@@ -59,7 +62,128 @@ function addInitialCats() {
   state.cats.forEach(cat => cat.y = state.floorY - 5);
 }
 
-addInitialCats();
+// Supabase Database Syncing Logic
+async function loadCatsFromDatabase() {
+  if (!supabase || !state.user) return;
+
+  try {
+    const { data: dbCats, error } = await supabase
+      .from('cats')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    if (dbCats && dbCats.length > 0) {
+      // Clear current cats and instantiate new Cat objects from DB data
+      state.cats = dbCats.map(c => {
+        const cat = new Cat(c.name, c.breed, { x: c.x || (100 + Math.random() * (state.canvasWidth - 200)) });
+        cat.id = c.id; // preserve database UUID
+        cat.affection = c.affection;
+        cat.hunger = c.hunger;
+        cat.energy = c.energy;
+        cat.gender = c.gender;
+        cat.y = state.floorY - 5;
+        return cat;
+      });
+      addLog(`☁️ Supabase에서 ${dbCats.length}마리의 고양이를 불러왔습니다.`);
+    } else {
+      // Database is empty. Migrate local cats if any exist, or add default initial cats
+      if (state.cats.length === 0) {
+        addInitialCats();
+      }
+      // Save all local cats to DB
+      await saveAllCatsToDatabase();
+    }
+  } catch (err) {
+    console.error('Failed to load cats from database:', err.message);
+    addLog(`⚠️ 고양이 데이터를 불러오는데 실패했습니다: ${err.message}`);
+  }
+}
+
+async function saveAllCatsToDatabase() {
+  if (!supabase || !state.user || state.cats.length === 0) return;
+
+  try {
+    const catsToInsert = state.cats.map(c => ({
+      id: c.id.startsWith('cat_') ? undefined : c.id, // let DB generate UUID if it's a client placeholder
+      user_id: state.user.id,
+      name: c.name,
+      breed: c.breed,
+      affection: Math.round(c.affection),
+      hunger: Math.round(c.hunger),
+      energy: Math.round(c.energy),
+      gender: c.gender
+    }));
+
+    const { data, error } = await supabase
+      .from('cats')
+      .upsert(catsToInsert, { onConflict: 'id' })
+      .select();
+
+    if (error) throw error;
+
+    // Update client IDs with DB UUIDs if any changed
+    if (data) {
+      data.forEach((dbCat, index) => {
+        if (state.cats[index]) {
+          state.cats[index].id = dbCat.id;
+        }
+      });
+    }
+    console.log('Successfully saved cats to database');
+  } catch (err) {
+    console.error('Failed to save cats to database:', err.message);
+  }
+}
+
+async function saveSingleCat(cat) {
+  if (!supabase || !state.user) return;
+  const isTempId = cat.id.startsWith('cat_');
+  
+  try {
+    const catData = {
+      user_id: state.user.id,
+      name: cat.name,
+      breed: cat.breed,
+      affection: Math.round(cat.affection),
+      hunger: Math.round(cat.hunger),
+      energy: Math.round(cat.energy),
+      gender: cat.gender
+    };
+    if (!isTempId) {
+      catData.id = cat.id;
+    }
+
+    const { data, error } = await supabase
+      .from('cats')
+      .upsert(catData)
+      .select();
+
+    if (error) throw error;
+    if (data && data[0]) {
+      cat.id = data[0].id; // update to UUID
+    }
+  } catch (err) {
+    console.error('Failed to save single cat:', err.message);
+  }
+}
+
+async function deleteCatFromDatabase(catId) {
+  if (!supabase || !state.user || catId.startsWith('cat_')) return;
+
+  try {
+    const { error } = await supabase
+      .from('cats')
+      .delete()
+      .eq('id', catId);
+
+    if (error) throw error;
+    console.log(`Successfully deleted cat ${catId} from DB`);
+  } catch (err) {
+    console.error('Failed to delete cat from database:', err.message);
+  }
+}
 
 // Log Manager
 const logContent = document.getElementById('log-content');
@@ -212,8 +336,9 @@ toyItems.forEach(item => {
     if (item.id === 'toy-box-item') type = 'box';
     else if (item.id === 'toy-treat') type = 'treat';
     
-    // Spawn in the middle sky
-    spawnToy(type, state.canvasWidth * 0.4 + Math.random() * 100, 50);
+    // Spawn at a random horizontal position in the sky
+    const rx = 50 + Math.random() * (state.canvasWidth - 100);
+    spawnToy(type, rx, 50);
   });
 });
 
@@ -549,11 +674,12 @@ document.getElementById('release-btn').addEventListener('click', () => {
   const cat = state.selectedCat;
   if (confirm(`${cat.name}를 좋은 곳으로 입양 보낼까요?\n언제든 새로운 고양이를 다시 데려올 수 있어요.`)) {
     // Remove cat
-    state.cats = state.cats.filter(c => c.id !== cat.id);
+    const catId = cat.id;
+    state.cats = state.cats.filter(c => c.id !== catId);
     
     // Clear any boxes claimed
     state.toys.forEach(t => {
-      if (t.claimedBy === cat.id) {
+      if (t.claimedBy === catId) {
         t.claimedBy = null;
       }
     });
@@ -561,6 +687,11 @@ document.getElementById('release-btn').addEventListener('click', () => {
     addLog(`🐾 <strong>${cat.name}</strong>(이)가 따뜻한 가정으로 입양을 떠났습니다. 행복하렴!`);
     hideCatDetails();
     playChime();
+
+    // Delete from database if logged in
+    if (state.user && supabase) {
+      deleteCatFromDatabase(catId);
+    }
   }
 });
 
@@ -613,6 +744,11 @@ createCatBtn.addEventListener('click', () => {
   state.cats.push(newCat);
   addLog(`💖 새로운 묘종(<strong>${breedMap[selectedBreed]}</strong>)인 <strong>${name}</strong>(이)가 안식처에 찾아왔습니다!`);
   
+  // Sync to database if logged in
+  if (state.user && supabase) {
+    saveSingleCat(newCat);
+  }
+
   // Reset fields
   catNameInput.value = '';
   sidebar.classList.remove('open');
@@ -860,6 +996,15 @@ function loop(timestamp) {
   // Track and log actions
   trackCatStates();
 
+  // Periodic Supabase sync (every 6 seconds)
+  if (state.user && supabase) {
+    if (!state.lastSyncTime) state.lastSyncTime = timestamp;
+    if (timestamp - state.lastSyncTime > 6000) {
+      state.lastSyncTime = timestamp;
+      saveAllCatsToDatabase();
+    }
+  }
+
   requestAnimationFrame(loop);
 }
 
@@ -884,6 +1029,83 @@ expandLogBtn.addEventListener('click', (e) => {
   playChime();
 });
 
+// Auth UI elements & Event Listeners
+const authBtn = document.getElementById('auth-btn');
+
+async function handleAuthClick() {
+  if (state.user) {
+    // Log out
+    if (confirm('구글 계정에서 로그아웃하시겠습니까?')) {
+      await supabase.auth.signOut();
+    }
+  } else {
+    // Log in
+    let key = getSupabaseAnonKey();
+    if (!key) {
+      key = prompt('Supabase Anon Key를 입력해 주세요 (최초 1회 저장):\n대시보드 > Project Settings > API > anon public key 에서 복사할 수 있습니다.');
+      if (key && key.trim()) {
+        setSupabaseAnonKey(key.trim());
+      } else {
+        return;
+      }
+    }
+    
+    // Ensure supabase is initialized
+    if (!supabase) {
+      initSupabaseClient();
+    }
+
+    if (!supabase) {
+      alert('Supabase 클라이언트 초기화에 실패했습니다. 올바른 Anon Key를 입력했는지 확인해 주세요.');
+      setSupabaseAnonKey(""); // reset
+      return;
+    }
+
+    // Sign in with OAuth Google
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin
+      }
+    });
+
+    if (error) {
+      alert('구글 로그인 오류: ' + error.message);
+    }
+  }
+}
+
+authBtn.addEventListener('click', handleAuthClick);
+
+function setupAuthListener() {
+  if (!supabase) return;
+
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    if (session) {
+      state.user = session.user;
+      authBtn.textContent = '🚪 로그아웃';
+      authBtn.classList.add('logged-in');
+      authBtn.title = `로그인 계정: ${session.user.email}`;
+      addLog(`🔑 구글 계정(${session.user.email})으로 로그인했습니다.`);
+      
+      // Load cats from Supabase
+      await loadCatsFromDatabase();
+    } else {
+      state.user = null;
+      authBtn.textContent = '🔑 구글 로그인';
+      authBtn.classList.remove('logged-in');
+      authBtn.title = '구글 로그인';
+      
+      // Reset to initial cats if user logged out
+      if (event === 'SIGNED_OUT') {
+        addLog('🚪 구글 계정에서 로그아웃했습니다.');
+        state.cats = [];
+        addInitialCats();
+      }
+    }
+  });
+}
+
 // Load sprites then start the game loop
 async function initGame() {
   addLog('🎨 스프라이트를 불러오는 중...');
@@ -894,6 +1116,38 @@ async function initGame() {
     console.warn('Sprite loading failed, using fallback:', err);
     addLog('⚠️ 스프라이트 로딩 실패 - 기본 모드로 실행합니다.');
   }
+
+  // Initialize Supabase if key is present
+  const key = getSupabaseAnonKey();
+  if (key) {
+    initSupabaseClient();
+    setupAuthListener();
+    
+    // Check if there is an active session
+    if (supabase) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          state.user = session.user;
+          authBtn.textContent = '🚪 로그아웃';
+          authBtn.classList.add('logged-in');
+          authBtn.title = `로그인 계정: ${session.user.email}`;
+          addLog(`🔑 기존 세션(${session.user.email})을 불러왔습니다.`);
+          await loadCatsFromDatabase();
+        } else {
+          addInitialCats();
+        }
+      } catch (err) {
+        console.error('Failed to get session:', err.message);
+        addInitialCats();
+      }
+    } else {
+      addInitialCats();
+    }
+  } else {
+    addInitialCats();
+  }
+
   requestAnimationFrame(loop);
   addLog('모카, 코코, 라떼 세 고양이가 한가롭게 노닐고 있습니다. 쓰다듬어보세요!');
 }

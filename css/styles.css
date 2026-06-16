@@ -883,3 +883,48 @@ canvas, button, .toy-item, .cat-details-card, .sidebar, .settings-panel {
     border-radius: 15px;
   }
 }
+
+/* Authentication Styling */
+.auth-btn {
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #2f3542;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-title);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.auth-btn:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px rgba(255, 107, 129, 0.25);
+}
+
+.auth-btn:active {
+  transform: translateY(0);
+}
+
+.auth-btn.logged-in {
+  background: rgba(46, 213, 115, 0.15);
+  border-color: rgba(46, 213, 115, 0.3);
+  color: #2ed573;
+}
+
+.auth-btn.logged-in:hover {
+  background: #ff4757;
+  border-color: #ff4757;
+  color: white;
+  box-shadow: 0 6px 12px rgba(255, 71, 87, 0.25);
+}
