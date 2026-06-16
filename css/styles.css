@@ -189,7 +189,9 @@ button.icon-btn:active {
   opacity: 0.8;
 }
 
-.form-group input[type="text"] {
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="password"] {
   padding: 10px 14px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-glass);
@@ -200,13 +202,17 @@ button.icon-btn:active {
   transition: border-color 0.2s;
 }
 
-.dark-theme .form-group input[type="text"] {
+.dark-theme .form-group input[type="text"],
+.dark-theme .form-group input[type="email"],
+.dark-theme .form-group input[type="password"] {
   background: rgba(15, 23, 42, 0.4);
   border-color: rgba(255,255,255,0.1);
   color: var(--text-light);
 }
 
-.form-group input[type="text"]:focus {
+.form-group input[type="text"]:focus,
+.form-group input[type="email"]:focus,
+.form-group input[type="password"]:focus {
   border-color: var(--primary);
 }
 
@@ -501,6 +507,24 @@ button.icon-btn:active {
 }
 
 /* Environmental & Customization Control Modal */
+.login-panel {
+  position: absolute;
+  top: 110px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 380px;
+  z-index: 100;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: slideDown 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.login-panel.hidden {
+  display: none;
+}
+
 .settings-panel {
   position: absolute;
   top: 110px;

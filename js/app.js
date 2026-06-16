@@ -36,14 +36,17 @@ function resizeCanvas() {
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
   
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
+  const width = rect.width || canvas.clientWidth || window.innerWidth || 800;
+  const height = rect.height || canvas.clientHeight || window.innerHeight || 600;
+  
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
   
   ctx.scale(dpr, dpr);
   
-  state.canvasWidth = rect.width;
-  state.canvasHeight = rect.height;
-  state.floorY = rect.height * 0.62; // floor level at 62% down
+  state.canvasWidth = width;
+  state.canvasHeight = height;
+  state.floorY = height * 0.62; // floor level at 62% down
   
   // Reinitialize background items
   initEnvironment(state.canvasWidth, state.canvasHeight);
@@ -1010,8 +1013,18 @@ function loop(timestamp) {
 
 // Close modals when clicking outside
 window.addEventListener('click', (e) => {
+  // Sidebar Creator
   if (!sidebar.contains(e.target) && !toggleCreatorBtn.contains(e.target)) {
     sidebar.classList.remove('open');
+  }
+  // Settings Panel
+  if (!settingsPanel.contains(e.target) && !settingsBtn.contains(e.target)) {
+    settingsPanel.classList.add('hidden');
+  }
+  // Login Modal
+  const loginModal = document.getElementById('login-modal');
+  if (loginModal && !loginModal.contains(e.target) && !authBtn.contains(e.target)) {
+    loginModal.classList.add('hidden');
   }
 });
 
@@ -1032,50 +1045,150 @@ expandLogBtn.addEventListener('click', (e) => {
 // Auth UI elements & Event Listeners
 const authBtn = document.getElementById('auth-btn');
 
+function ensureSupabaseInitialized() {
+  let key = getSupabaseAnonKey();
+  if (!key) {
+    key = prompt('Supabase Anon Key를 입력해 주세요 (최초 1회 저장):\n대시보드 > Project Settings > API > anon public key 에서 복사할 수 있습니다.');
+    if (key && key.trim()) {
+      setSupabaseAnonKey(key.trim());
+    } else {
+      return false;
+    }
+  }
+  
+  if (!supabase) {
+    initSupabaseClient();
+  }
+
+  if (!supabase) {
+    alert('Supabase 클라이언트 초기화에 실패했습니다. 올바른 Anon Key를 입력했는지 확인해 주세요.');
+    setSupabaseAnonKey(""); // reset
+    return false;
+  }
+  return true;
+}
+
 async function handleAuthClick() {
   if (state.user) {
     // Log out
-    if (confirm('구글 계정에서 로그아웃하시겠습니까?')) {
+    if (confirm('계정에서 로그아웃하시겠습니까?')) {
       await supabase.auth.signOut();
     }
   } else {
-    // Log in
-    let key = getSupabaseAnonKey();
-    if (!key) {
-      key = prompt('Supabase Anon Key를 입력해 주세요 (최초 1회 저장):\n대시보드 > Project Settings > API > anon public key 에서 복사할 수 있습니다.');
-      if (key && key.trim()) {
-        setSupabaseAnonKey(key.trim());
+    // Open Login Modal
+    const loginModal = document.getElementById('login-modal');
+    loginModal.classList.remove('hidden');
+    
+    // Auto-focus on email input
+    const emailInput = document.getElementById('login-email');
+    if (emailInput) {
+      emailInput.focus();
+    }
+  }
+}
+
+authBtn.addEventListener('click', handleAuthClick);
+
+// Close login modal btn
+document.getElementById('close-login-btn').addEventListener('click', () => {
+  document.getElementById('login-modal').classList.add('hidden');
+  playChime();
+});
+
+// Email/Password Signup
+document.getElementById('email-signup-btn').addEventListener('click', async () => {
+  if (!ensureSupabaseInitialized()) return;
+  
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  
+  if (!email || !password) {
+    alert('이메일과 비밀번호를 모두 입력해 주세요.');
+    return;
+  }
+  
+  if (password.length < 6) {
+    alert('비밀번호는 최소 6자 이상이어야 합니다.');
+    return;
+  }
+  
+  addLog('☁️ 회원가입을 요청 중입니다...');
+  try {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password
+    });
+    
+    if (error) {
+      alert('회원가입 실패: ' + error.message);
+      addLog('❌ 회원가입 실패: ' + error.message);
+    } else {
+      if (data.session) {
+        alert('회원가입 및 로그인에 성공했습니다!');
+        document.getElementById('login-modal').classList.add('hidden');
       } else {
-        return;
+        alert('회원가입 완료! 메일함(또는 스팸함)에서 인증 이메일을 확인해 주세요.');
+        addLog('✉️ 이메일 인증 메일이 발송되었습니다.');
+        document.getElementById('login-modal').classList.add('hidden');
       }
     }
+  } catch (err) {
+    alert('오류 발생: ' + err.message);
+  }
+});
+
+// Email/Password Login
+document.getElementById('email-login-btn').addEventListener('click', async () => {
+  if (!ensureSupabaseInitialized()) return;
+  
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  
+  if (!email || !password) {
+    alert('이메일과 비밀번호를 모두 입력해 주세요.');
+    return;
+  }
+  
+  addLog('☁️ 로그인을 요청 중입니다...');
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
     
-    // Ensure supabase is initialized
-    if (!supabase) {
-      initSupabaseClient();
+    if (error) {
+      alert('로그인 실패: ' + error.message);
+      addLog('❌ 로그인 실패: ' + error.message);
+    } else {
+      alert('로그인에 성공했습니다!');
+      document.getElementById('login-modal').classList.add('hidden');
     }
+  } catch (err) {
+    alert('오류 발생: ' + err.message);
+  }
+});
 
-    if (!supabase) {
-      alert('Supabase 클라이언트 초기화에 실패했습니다. 올바른 Anon Key를 입력했는지 확인해 주세요.');
-      setSupabaseAnonKey(""); // reset
-      return;
-    }
-
-    // Sign in with OAuth Google
+// Google Login OAuth
+document.getElementById('google-login-btn').addEventListener('click', async () => {
+  if (!ensureSupabaseInitialized()) return;
+  
+  addLog('☁️ 구글 로그인 창으로 이동 중...');
+  try {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: window.location.origin
       }
     });
-
+    
     if (error) {
       alert('구글 로그인 오류: ' + error.message);
+      addLog('❌ 구글 로그인 오류: ' + error.message);
     }
+  } catch (err) {
+    alert('오류 발생: ' + err.message);
   }
-}
-
-authBtn.addEventListener('click', handleAuthClick);
+});
 
 function setupAuthListener() {
   if (!supabase) return;
@@ -1086,19 +1199,19 @@ function setupAuthListener() {
       authBtn.textContent = '🚪 로그아웃';
       authBtn.classList.add('logged-in');
       authBtn.title = `로그인 계정: ${session.user.email}`;
-      addLog(`🔑 구글 계정(${session.user.email})으로 로그인했습니다.`);
+      addLog(`🔑 계정(${session.user.email})으로 로그인했습니다.`);
       
       // Load cats from Supabase
       await loadCatsFromDatabase();
     } else {
       state.user = null;
-      authBtn.textContent = '🔑 구글 로그인';
+      authBtn.textContent = '🔑 로그인';
       authBtn.classList.remove('logged-in');
-      authBtn.title = '구글 로그인';
+      authBtn.title = '로그인';
       
       // Reset to initial cats if user logged out
       if (event === 'SIGNED_OUT') {
-        addLog('🚪 구글 계정에서 로그아웃했습니다.');
+        addLog('🚪 계정에서 로그아웃했습니다.');
         state.cats = [];
         addInitialCats();
       }

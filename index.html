@@ -41,7 +41,7 @@
         <h1>Online Cat</h1>
       </div>
       <div class="top-controls">
-        <button id="auth-btn" class="auth-btn" title="구글 로그인">🔑 구글 로그인</button>
+        <button id="auth-btn" class="auth-btn" title="로그인">🔑 로그인</button>
         <button id="settings-btn" class="icon-btn" title="환경 설정">⚙️</button>
         <button id="mute-btn" class="icon-btn" title="소리 켜기/끄기">🔊</button>
         <button id="toggle-creator-btn" class="icon-btn" title="고양이 만들기">➕</button>
@@ -213,6 +213,38 @@
       <div class="toy-item" id="toy-clear-all" title="장난감 청소: 바닥에 있는 모든 장난감을 치웁니다.">
         <span class="toy-icon">🧹</span>
         <span class="toy-name">모두청소</span>
+      </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="login-panel glass-panel hidden">
+      <div class="card-header" style="margin-bottom: 12px;">
+        <h3>🔑 로그인 및 회원가입</h3>
+        <button id="close-login-btn" class="close-card-btn">✕</button>
+      </div>
+      <p style="font-size:12.5px; opacity:0.8; margin-top:-10px; margin-bottom:15px; text-align:center; line-height: 1.4;">
+        Supabase 연동을 위해 이메일 계정으로 가입/로그인하거나 구글 계정을 연동해 고양이를 저장하세요.
+      </p>
+
+      <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+        <label for="login-email">이메일 주소</label>
+        <input type="email" id="login-email" placeholder="example@email.com">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 15px; display: flex; flex-direction: column; gap: 6px;">
+        <label for="login-password">비밀번호</label>
+        <input type="password" id="login-password" placeholder="6자리 이상 비밀번호">
+      </div>
+
+      <div class="login-actions" style="display:flex; flex-direction:column; gap:8px;">
+        <button id="email-login-btn" class="primary-btn" style="background:var(--primary); margin:0;">이메일 로그인</button>
+        <button id="email-signup-btn" class="primary-btn" style="background:#54a0ff; margin:0;">이메일 회원가입</button>
+        <div style="display:flex; align-items:center; margin: 4px 0;">
+          <hr style="flex:1; border:0; border-top:1px solid rgba(0,0,0,0.15);"><span style="font-size:11px; opacity:0.6; padding:0 8px;">또는</span><hr style="flex:1; border:0; border-top:1px solid rgba(0,0,0,0.15);">
+        </div>
+        <button id="google-login-btn" class="primary-btn" style="background:#ffffff; color:#000000; border:1px solid #ddd; margin:0; display:flex; align-items:center; justify-content:center; gap:8px;">
+          <span style="font-size:14px;">🌐</span> 구글 계정으로 로그인
+        </button>
       </div>
     </div>
   </div>
