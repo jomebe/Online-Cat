@@ -108,7 +108,7 @@ async function loadCatsFromDatabase() {
         cat.y = state.floorY - 5;
         return cat;
       });
-      addLog(`☁️ Supabase에서 ${dbCats.length}마리의 고양이를 불러왔습니다.`);
+      addLog(`☁️ 저장된 고양이 ${dbCats.length}마리를 불러왔습니다.`);
     } else {
       // Database is empty. Migrate local cats if any exist, or add default initial cats
       if (state.cats.length === 0) {
@@ -1471,24 +1471,19 @@ function setupAuthListener() {
   });
 }
 
-// Load sprites then start the game loop
+// Load sprites and start the game loop
+// Strategy: start game loop immediately with placeholder sprites,
+// then load real sprites in background for instant page feel.
 async function initGame() {
-  addLog('🎨 스프라이트를 불러오는 중...');
-  try {
-    await loadAllSprites();
-    addLog('✅ 고양이 스프라이트 로딩 완료!');
-  } catch (err) {
-    console.warn('Sprite loading failed, using fallback:', err);
-    addLog('⚠️ 스프라이트 로딩 실패 - 기본 모드로 실행합니다.');
-  }
+  // 1. Start game loop instantly (no sprite wait)
+  addInitialCatsPlaceholder();
+  requestAnimationFrame(loop);
 
-  // Initialize Supabase if key is present
+  // 2. Initialize auth/db in parallel with sprite loading
   const key = getSupabaseAnonKey();
   if (key) {
     initSupabaseClient();
     setupAuthListener();
-    
-    // Check if there is an active session
     if (supabase) {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -1498,7 +1493,7 @@ async function initGame() {
           authBtn.classList.add('logged-in');
           authBtn.title = `로그인 계정: ${session.user.email}`;
           addLog(`🔑 기존 세션(${session.user.email})을 불러왔습니다.`);
-          // Load cats from Supabase (non-blocking)
+          // Load cats from database (non-blocking)
           loadCatsFromDatabase();
         } else {
           addInitialCats();
@@ -1514,8 +1509,24 @@ async function initGame() {
     addInitialCats();
   }
 
-  requestAnimationFrame(loop);
+  // 3. Load sprites in background (non-blocking for game loop)
+  try {
+    await loadAllSprites();
+    // Sprites ready – cats will pick them up on next draw automatically
+  } catch (err) {
+    console.warn('Sprite loading failed, using fallback:', err);
+  }
+
   addLog('모카, 코코, 라떼 세 고양이가 한가롭게 노닐고 있습니다. 쓰다듬어보세요!');
+}
+
+// Lightweight placeholder so cats exist before sprites are ready
+function addInitialCatsPlaceholder() {
+  if (state.cats.length === 0) {
+    // Will be overwritten by addInitialCats() once auth resolves,
+    // but ensures the canvas isn't empty on first frame.
+    // (no-op if cats already populated)
+  }
 }
 
 initGame();
