@@ -910,6 +910,10 @@ canvas, button, .toy-item, .cat-details-card, .sidebar, .settings-panel {
     font-size: 11px;
     border-radius: 15px;
   }
+  
+  .camera-hud {
+    bottom: 200px;
+  }
 }
 
 /* Authentication Styling */
@@ -1012,8 +1016,9 @@ body.ui-hidden #toy-box {
 
 .camera-hud {
   position: absolute;
-  bottom: 20px;
-  left: 20px;
+  bottom: 180px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 90;
   display: flex;
   align-items: center;
