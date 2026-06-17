@@ -1065,3 +1065,71 @@ body.ui-hidden #toy-box {
 .camera-hud button:active {
   transform: translateY(0);
 }
+
+/* Photo Taking Feature Styles */
+.photo-panel {
+  position: absolute;
+  top: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 480px;
+  max-width: 90vw;
+  z-index: 150;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: slideDown 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.photo-panel.hidden {
+  display: none !important;
+}
+
+.photo-flash {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: white;
+  z-index: 9999;
+  opacity: 1;
+  pointer-events: none;
+  transition: opacity 0.5s ease-out;
+}
+
+.take-photo-cinematic-btn {
+  position: absolute;
+  top: 20px;
+  right: 74px;
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--border-glass);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  transition: all 0.2s ease;
+}
+
+.take-photo-cinematic-btn:hover {
+  transform: scale(1.1);
+  background: #ffffff;
+  box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+}
+
+.take-photo-cinematic-btn:active {
+  transform: scale(0.95);
+}
+
+.dark-theme .take-photo-cinematic-btn {
+  background: rgba(30, 41, 59, 0.7);
+  border-color: rgba(255,255,255,0.08);
+  color: var(--text-light);
+}

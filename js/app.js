@@ -1,5 +1,5 @@
 // js/app.js
-import { initAudio, playMeow, playChime, startAmbient, stopAmbient, toggleMute, setAmbientVolume } from './audio.js';
+import { initAudio, playMeow, playChime, startAmbient, stopAmbient, toggleMute, setAmbientVolume, playCameraSound } from './audio.js';
 import { initEnvironment, updateEnvironment, drawBackground, drawEnvironmentParticles, getTimeOfDay, setEnvironmentTime } from './canvas.js';
 import { Cat } from './cat.js';
 import { Toy, drawLaserDot } from './toy.js';
@@ -70,12 +70,18 @@ resizeCanvas(); // initial run
 
 // Add 3 default cats with cozy names and diverse breeds
 function addInitialCats() {
+  if (loadCatsFromLocalStorage()) {
+    return;
+  }
+
   state.cats.push(new Cat('모카', 'ginger', { x: state.canvasWidth * 0.25 }));
   state.cats.push(new Cat('코코', 'tuxedo', { x: state.canvasWidth * 0.5 }));
   state.cats.push(new Cat('라떼', 'siamese', { x: state.canvasWidth * 0.7 }));
   
   // Update state positions
   state.cats.forEach(cat => cat.y = state.floorY - 5);
+  
+  saveCatsToLocalStorage();
 }
 
 // LocalStorage Persistence for Placed Toys
@@ -125,6 +131,60 @@ function loadToysFromLocalStorage() {
   }
 }
 
+// LocalStorage Persistence for Cats (including positions and stats)
+function saveCatsToLocalStorage() {
+  try {
+    // 1. Save local cats list (used when logged out)
+    const catsData = state.cats.map(cat => ({
+      id: cat.id,
+      name: cat.name,
+      breed: cat.breed,
+      x: cat.x,
+      y: cat.y,
+      affection: cat.affection,
+      hunger: cat.hunger,
+      energy: cat.energy,
+      gender: cat.gender
+    }));
+    localStorage.setItem('online_cat_local_cats', JSON.stringify(catsData));
+
+    // 2. Save X coordinates mapping by ID (used for restoring coordinates of DB-synced cats)
+    const positions = {};
+    state.cats.forEach(cat => {
+      positions[cat.id] = cat.x;
+    });
+    localStorage.setItem('online_cat_positions', JSON.stringify(positions));
+  } catch (err) {
+    console.warn('Failed to save cats to localStorage:', err);
+  }
+}
+
+function loadCatsFromLocalStorage() {
+  try {
+    const savedCatsJson = localStorage.getItem('online_cat_local_cats');
+    if (savedCatsJson) {
+      const savedCatsData = JSON.parse(savedCatsJson);
+      if (Array.isArray(savedCatsData) && savedCatsData.length > 0) {
+        state.cats = savedCatsData.map(data => {
+          const cat = new Cat(data.name, data.breed, { x: data.x });
+          cat.id = data.id;
+          cat.affection = data.affection;
+          cat.hunger = data.hunger;
+          cat.energy = data.energy;
+          cat.gender = data.gender;
+          cat.y = state.floorY - 5;
+          return cat;
+        });
+        addLog(`📦 저장된 고양이 ${state.cats.length}마리를 불러왔습니다.`);
+        return true;
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to load cats from localStorage:', err);
+  }
+  return false;
+}
+
 // Supabase Database Syncing Logic
 let isLoadingCats = false;
 
@@ -145,9 +205,21 @@ async function loadCatsFromDatabase() {
     if (error) throw error;
 
     if (dbCats && dbCats.length > 0) {
+      // Load position map from localStorage
+      let positions = {};
+      try {
+        const savedPositionsJson = localStorage.getItem('online_cat_positions');
+        if (savedPositionsJson) {
+          positions = JSON.parse(savedPositionsJson);
+        }
+      } catch (err) {
+        console.warn('Failed to load cat positions map:', err);
+      }
+
       // Clear current cats and instantiate new Cat objects from DB data
       state.cats = dbCats.map(c => {
-        const cat = new Cat(c.name, c.breed, { x: c.x || (100 + Math.random() * (state.canvasWidth - 200)) });
+        const savedX = positions[c.id];
+        const cat = new Cat(c.name, c.breed, { x: savedX || (100 + Math.random() * (state.canvasWidth - 200)) });
         cat.id = c.id; // preserve database UUID
         cat.affection = c.affection;
         cat.hunger = c.hunger;
@@ -308,8 +380,8 @@ function trackCatStates() {
 
 // Spawning toys
 function spawnToy(type, x, y) {
-  // Cap toys to avoid cluttering (max 8)
-  if (state.toys.length >= 8) {
+  // Cap toys to avoid cluttering (max 25)
+  if (state.toys.length >= 25) {
     const oldestToy = state.toys.shift();
     if (oldestToy && oldestToy.claimedBy) {
       const cat = state.cats.find(c => c.id === oldestToy.claimedBy);
@@ -789,6 +861,8 @@ const labelHunger = document.getElementById('label-hunger');
 const trackBtn = document.getElementById('track-btn');
 const showUiBtn = document.getElementById('show-ui-btn');
 const hideUiBtn = document.getElementById('hide-ui-btn');
+const takePhotoBtn = document.getElementById('take-photo-btn');
+const takePhotoCinematicBtn = document.getElementById('take-photo-cinematic-btn');
 const cameraHud = document.getElementById('camera-hud');
 const cameraTargetName = document.getElementById('camera-target-name');
 const stopTrackBtn = document.getElementById('stop-track-btn');
@@ -862,6 +936,7 @@ stopTrackBtn.addEventListener('click', () => {
 hideUiBtn.addEventListener('click', () => {
   document.body.classList.add('ui-hidden');
   showUiBtn.classList.remove('hidden');
+  takePhotoCinematicBtn.classList.remove('hidden');
   playChime();
 });
 
@@ -869,12 +944,88 @@ hideUiBtn.addEventListener('click', () => {
 showUiBtn.addEventListener('click', () => {
   document.body.classList.remove('ui-hidden');
   showUiBtn.classList.add('hidden');
+  takePhotoCinematicBtn.classList.add('hidden');
   
   // Restoring UI stops camera tracking
   if (state.camera.targetCat) {
     state.camera.targetCat = null;
     cameraHud.classList.add('hidden');
   }
+  playChime();
+});
+
+// Photo Taking Feature
+const photoModal = document.getElementById('photo-modal');
+const photoImg = document.getElementById('photo-img');
+const downloadPhotoBtn = document.getElementById('download-photo-btn');
+const closePhotoBtn = document.getElementById('close-photo-btn');
+const closePhotoBtnBottom = document.getElementById('close-photo-btn-bottom');
+
+function takeSnapshot() {
+  initAudio();
+  playCameraSound();
+
+  const flash = document.createElement('div');
+  flash.className = 'photo-flash';
+  document.body.appendChild(flash);
+  
+  setTimeout(() => {
+    flash.style.opacity = '0';
+  }, 50);
+  
+  setTimeout(() => {
+    flash.remove();
+  }, 600);
+
+  try {
+    const dataUrl = canvas.toDataURL('image/png');
+    photoImg.src = dataUrl;
+    photoModal.classList.remove('hidden');
+    
+    downloadPhotoBtn.onclick = (e) => {
+      e.stopPropagation();
+      initAudio();
+      
+      const link = document.createElement('a');
+      const now = new Date();
+      const dateStr = now.getFullYear() +
+        String(now.getMonth() + 1).padStart(2, '0') +
+        String(now.getDate()).padStart(2, '0') + '_' +
+        String(now.getHours()).padStart(2, '0') +
+        String(now.getMinutes()).padStart(2, '0') +
+        String(now.getSeconds()).padStart(2, '0');
+      link.download = `online_cat_${dateStr}.png`;
+      link.href = dataUrl;
+      link.click();
+      
+      addLog('💾 고양이 사진을 파일로 저장했습니다.');
+      playChime();
+    };
+  } catch (err) {
+    console.error('Failed to capture canvas snapshot:', err);
+    alert('사진 촬영에 실패했습니다: ' + err.message);
+  }
+}
+
+takePhotoBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  takeSnapshot();
+});
+
+takePhotoCinematicBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  takeSnapshot();
+});
+
+closePhotoBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  photoModal.classList.add('hidden');
+  playChime();
+});
+
+closePhotoBtnBottom.addEventListener('click', (e) => {
+  e.stopPropagation();
+  photoModal.classList.add('hidden');
   playChime();
 });
 
@@ -887,6 +1038,11 @@ document.getElementById('rename-btn').addEventListener('click', () => {
     addLog(`<strong>${state.selectedCat.name}</strong>의 이름이 <strong>${cleaned}</strong>(으)로 변경되었습니다.`);
     state.selectedCat.name = cleaned;
     detailName.textContent = cleaned;
+    
+    if (state.user && supabase) {
+      saveSingleCat(state.selectedCat);
+    }
+    saveCatsToLocalStorage();
   }
 });
 
@@ -901,6 +1057,11 @@ document.getElementById('obs-rename-btn').addEventListener('click', () => {
     addLog(`<strong>${observedCat.name}</strong>의 이름이 <strong>${cleaned}</strong>(으)로 변경되었습니다.`);
     observedCat.name = cleaned;
     document.getElementById('obs-cat-name').textContent = cleaned;
+    
+    if (state.user && supabase) {
+      saveSingleCat(observedCat);
+    }
+    saveCatsToLocalStorage();
   }
 });
 
@@ -934,6 +1095,7 @@ document.getElementById('release-btn').addEventListener('click', () => {
     if (state.user && supabase) {
       deleteCatFromDatabase(catId);
     }
+    saveCatsToLocalStorage();
   }
 });
 
@@ -990,6 +1152,7 @@ createCatBtn.addEventListener('click', () => {
   if (state.user && supabase) {
     saveSingleCat(newCat);
   }
+  saveCatsToLocalStorage();
 
   // Reset fields
   catNameInput.value = '';
@@ -1323,11 +1486,12 @@ function loop(timestamp) {
     }
   }
 
-  // Periodic local storage save for toys (every 6 seconds)
+  // Periodic local storage save for toys and cats (every 6 seconds)
   if (!state.lastToySyncTime) state.lastToySyncTime = timestamp;
   if (timestamp - state.lastToySyncTime > 6000) {
     state.lastToySyncTime = timestamp;
     saveToysToLocalStorage();
+    saveCatsToLocalStorage();
   }
 
   requestAnimationFrame(loop);
@@ -1347,6 +1511,10 @@ window.addEventListener('click', (e) => {
   const loginModal = document.getElementById('login-modal');
   if (loginModal && !loginModal.contains(e.target) && !authBtn.contains(e.target)) {
     loginModal.classList.add('hidden');
+  }
+  // Photo Modal
+  if (photoModal && !photoModal.contains(e.target) && !takePhotoBtn.contains(e.target) && !takePhotoCinematicBtn.contains(e.target)) {
+    photoModal.classList.add('hidden');
   }
 });
 
@@ -1600,6 +1768,7 @@ window.addEventListener('keydown', (e) => {
       // Restore UI
       document.body.classList.remove('ui-hidden');
       showUiBtn.classList.add('hidden');
+      takePhotoCinematicBtn.classList.add('hidden');
       if (state.camera.targetCat) {
         state.camera.targetCat = null;
         cameraHud.classList.add('hidden');
@@ -1608,6 +1777,7 @@ window.addEventListener('keydown', (e) => {
       // Hide UI
       document.body.classList.add('ui-hidden');
       showUiBtn.classList.remove('hidden');
+      takePhotoCinematicBtn.classList.remove('hidden');
     }
     playChime();
   }

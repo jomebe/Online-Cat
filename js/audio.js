@@ -334,3 +334,75 @@ export function setAmbientVolume(vol) {
     ambientGainNode.gain.setValueAtTime(vol, audioCtx.currentTime);
   }
 }
+
+// Procedural Camera Shutter click sound
+export function playCameraSound() {
+  if (!audioCtx || isMuted || audioCtx.state === 'suspended') return;
+
+  const now = audioCtx.currentTime;
+
+  // 1. Synthesize shutter opening click (metallic click)
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(600, now);
+  osc.frequency.setValueAtTime(100, now + 0.02);
+  
+  gain.gain.setValueAtTime(0.001, now);
+  gain.gain.linearRampToValueAtTime(0.06, now + 0.005);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+  
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start(now);
+  osc.stop(now + 0.04);
+  
+  // 2. Synthesize shutter closing click (80ms later)
+  const osc2 = audioCtx.createOscillator();
+  const gain2 = audioCtx.createGain();
+  
+  osc2.type = 'triangle';
+  osc2.frequency.setValueAtTime(500, now + 0.07);
+  osc2.frequency.setValueAtTime(80, now + 0.09);
+  
+  gain2.gain.setValueAtTime(0.001, now + 0.07);
+  gain2.gain.linearRampToValueAtTime(0.05, now + 0.075);
+  gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+  
+  osc2.connect(gain2);
+  gain2.connect(audioCtx.destination);
+  osc2.start(now + 0.07);
+  osc2.stop(now + 0.13);
+  
+  // 3. Synthesize the air hiss (white noise burst) for shutter release
+  try {
+    const bufferSize = audioCtx.sampleRate * 0.15;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    
+    const noiseSource = audioCtx.createBufferSource();
+    noiseSource.buffer = buffer;
+    
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 2500;
+    filter.Q.value = 1.0;
+    
+    const noiseGain = audioCtx.createGain();
+    noiseGain.gain.setValueAtTime(0.025, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
+    
+    noiseSource.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(audioCtx.destination);
+    
+    noiseSource.start(now);
+    noiseSource.stop(now + 0.15);
+  } catch (e) {
+    console.warn('Procedural noise generation failed:', e);
+  }
+}
