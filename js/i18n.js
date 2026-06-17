@@ -6,8 +6,8 @@ export const translations = {
   ko: {
     // UI Elements
     app_title: "Online Cat",
-    login: "🔑 로그인",
-    logout: "🚪 로그아웃",
+    login: "🔑<span class=\"auth-text\"> 로그인</span>",
+    logout: "🚪<span class=\"auth-text\"> 로그아웃</span>",
     hide_ui: "👁️",
     show_ui: "👁️",
     take_photo: "📷",
@@ -162,8 +162,8 @@ export const translations = {
   en: {
     // UI Elements
     app_title: "Online Cat",
-    login: "🔑 Login",
-    logout: "🚪 Logout",
+    login: "🔑<span class=\"auth-text\"> Login</span>",
+    logout: "🚪<span class=\"auth-text\"> Logout</span>",
     hide_ui: "👁️",
     show_ui: "👁️",
     take_photo: "📷",

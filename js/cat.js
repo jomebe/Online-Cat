@@ -610,7 +610,7 @@ export class Cat {
   }
 
   // Draw Name tag, hearts, and stars overlay (drawn on top of all toys/boxes)
-  drawOverlay(ctx) {
+  drawOverlay(ctx, yOffset = 0) {
     // Draw Name text overlay (always in screen space, not flipped)
     ctx.save();
     ctx.fillStyle = '#2f3542';
@@ -625,7 +625,7 @@ export class Cat {
     else if (this.state === 'play') displayName = '🎾 ' + this.name;
 
     // this.y is the floor anchor; name tag is placed at a stable offset above the floor
-    ctx.fillText(displayName, this.x, this.y - 85 * this.scale);
+    ctx.fillText(displayName, this.x, this.y - (85 + yOffset) * this.scale);
     ctx.restore();
 
     // Render rising hearts

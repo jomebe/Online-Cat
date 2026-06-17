@@ -833,6 +833,19 @@ canvas, button, .toy-item, .cat-details-card, .sidebar, .settings-panel {
     font-size: 14px;
   }
   
+  .auth-btn {
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    justify-content: center;
+    font-size: 14px;
+  }
+  
+  .auth-btn .auth-text {
+    display: none;
+  }
+  
   .sidebar {
     top: 74px;
     width: calc(100% - 40px);

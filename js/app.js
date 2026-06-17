@@ -1301,10 +1301,10 @@ langBtns.forEach(btn => {
     }
     
     if (state.user) {
-      authBtn.textContent = t('logout');
+      authBtn.innerHTML = t('logout');
       authBtn.title = t('logged_in_as', { email: state.user.email });
     } else {
-      authBtn.textContent = t('login');
+      authBtn.innerHTML = t('login');
       authBtn.title = t('login');
     }
     
@@ -1482,8 +1482,35 @@ function loop(timestamp) {
   }
 
   // 6.5 Draw Cat Overlays (name tags, hearts, stars) on top of all toys
+  // Sort cats by X coordinate to calculate Y offsets to avoid overlapping name tags
+  const sortedByX = [...state.cats].sort((a, b) => a.x - b.x);
+  const catOffsets = {}; // cat.id -> offset px
+
+  for (let i = 0; i < sortedByX.length; i++) {
+    const cat = sortedByX[i];
+    let level = 0;
+    
+    // Find the smallest level such that no cat within 75px has the same level
+    while (true) {
+      let conflict = false;
+      for (let j = 0; j < i; j++) {
+        const other = sortedByX[j];
+        if (Math.abs(cat.x - other.x) < 75 && catOffsets[other.id] === level * 16) {
+          conflict = true;
+          break;
+        }
+      }
+      if (!conflict) {
+        break;
+      }
+      level++;
+    }
+    catOffsets[cat.id] = level * 16;
+  }
+
   state.cats.forEach(cat => {
-    cat.drawOverlay(ctx);
+    const offset = catOffsets[cat.id] || 0;
+    cat.drawOverlay(ctx, offset);
   });
 
   ctx.restore();
@@ -1736,7 +1763,7 @@ function setupAuthListener() {
   supabase.auth.onAuthStateChange(async (event, session) => {
     if (session) {
       state.user = session.user;
-      authBtn.textContent = t('logout');
+      authBtn.innerHTML = t('logout');
       authBtn.classList.add('logged-in');
       authBtn.title = t('logged_in_as', { email: session.user.email });
       addLog(t('log_login_success', { email: session.user.email }));
@@ -1745,7 +1772,7 @@ function setupAuthListener() {
       loadCatsFromDatabase();
     } else {
       state.user = null;
-      authBtn.textContent = t('login');
+      authBtn.innerHTML = t('login');
       authBtn.classList.remove('logged-in');
       authBtn.title = t('login');
       
@@ -1794,7 +1821,7 @@ async function initGame() {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           state.user = session.user;
-          authBtn.textContent = t('logout');
+          authBtn.innerHTML = t('logout');
           authBtn.classList.add('logged-in');
           authBtn.title = t('logged_in_as', { email: session.user.email });
           addLog(t('log_session_loaded', { email: session.user.email }));
