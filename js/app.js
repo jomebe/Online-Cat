@@ -1136,7 +1136,29 @@ function updateMaxCatsLimit() {
   localStorage.setItem('online_cat_max_cats_limit', state.maxCatsLimit);
 }
 
-function watchAdToUnlockSlot() {
+async function checkAdBlock() {
+  try {
+    // Attempt to fetch the ad provider script. If Adblock is active, it blocks it, triggering an exception.
+    await fetch('https://www.highperformanceformat.com/e30dea9166251d938f613190dc322b51/invoke.js', {
+      method: 'HEAD',
+      mode: 'no-cors',
+      cache: 'no-store'
+    });
+    return false;
+  } catch (err) {
+    console.warn('Adblock detection triggered:', err);
+    return true;
+  }
+}
+
+async function watchAdToUnlockSlot() {
+  // Prevent slot addition if Adblock is active
+  const isAdBlock = await checkAdBlock();
+  if (isAdBlock) {
+    alert(t('alert_adblock_detected'));
+    return;
+  }
+
   const adModal = document.getElementById('ad-modal');
   const adProgressBar = document.getElementById('ad-progress-bar-fill');
   const adCountdown = document.getElementById('ad-countdown-overlay');
