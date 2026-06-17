@@ -807,16 +807,19 @@ canvas, button, .toy-item, .cat-details-card, .sidebar, .settings-panel {
 
 @media (max-width: 768px) {
   header {
-    height: 52px;
-    padding: 6px 14px;
+    height: 48px;
+    padding: 4px 12px;
     gap: 0;
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
+    top: 10px;
+    left: 10px;
+    right: 10px;
   }
   
-  header h1 {
-    font-size: 16px;
+  header h1, .logo-section h1 {
+    display: none !important; /* Hide logo text on mobile to ensure header elements fit in a single row */
   }
   
   .cat-icon {
@@ -847,64 +850,174 @@ canvas, button, .toy-item, .cat-details-card, .sidebar, .settings-panel {
   }
   
   .sidebar {
-    top: 74px;
-    width: calc(100% - 40px);
+    top: 68px;
+    width: calc(100% - 20px);
     right: -100%;
-    height: calc(100vh - 210px);
+    height: calc(100vh - 120px);
     padding: 16px;
     gap: 12px;
+    max-width: 360px;
   }
   
   .sidebar.open {
-    right: 20px;
+    right: 10px;
   }
   
   .cat-details-card {
-    top: 74px;
-    width: calc(100% - 40px);
-    left: 20px;
-    padding: 16px;
-    gap: 12px;
+    top: 68px;
+    width: calc(100% - 20px);
+    max-width: 360px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px;
+    gap: 8px;
   }
   
   .settings-panel {
-    top: 74px;
-    width: calc(100% - 40px);
+    top: 68px;
+    width: calc(100% - 20px);
+    max-width: 360px;
+    left: 50%;
+    transform: translateX(-50%);
     padding: 16px;
     gap: 12px;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
   }
   
+  /* Compact Toy Box */
   .toy-box {
     left: 10px;
     right: 10px;
-    bottom: 15px;
-    padding: 10px 12px;
-    gap: 10px;
+    bottom: 10px;
+    height: 48px;
+    padding: 4px 10px;
+    gap: 8px;
     justify-content: space-around;
     overflow-x: auto;
   }
   
-  .toy-item {
-    padding: 8px 10px;
-    font-size: 12px;
-    min-width: 70px;
-    flex-shrink: 0;
+  .toy-box .toy-name {
+    display: none; /* Hide names of toys under buttons to save vertical space */
   }
   
+  .toy-item {
+    width: 36px;
+    height: 36px;
+    min-width: auto;
+    border-radius: 50%;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.4);
+  }
+  
+  .toy-icon {
+    font-size: 20px;
+    margin: 0 !important;
+  }
+  
+  /* Compact Activity Log */
   .activity-log {
-    bottom: 100px;
+    bottom: 66px;
     left: 10px;
     right: 10px;
     width: auto;
-    height: 90px;
+    height: 36px;
+    padding: 0 10px;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-start;
   }
   
+  .activity-log:not(.expanded) .log-header {
+    width: auto !important;
+    margin-bottom: 0 !important;
+    flex-shrink: 0;
+  }
+  
+  .activity-log .log-header-text {
+    display: none;
+  }
+  
+  .activity-log #expand-log-btn {
+    position: absolute !important;
+    right: 8px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    margin: 0 !important;
+  }
+  
+  .activity-log:not(.expanded) .log-content {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-grow: 1;
+    margin: 0 32px 0 8px;
+    overflow: hidden;
+    height: 100%;
+  }
+  
+  .activity-log:not(.expanded) .log-content .log-entry {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+    width: 100%;
+    margin: 0;
+  }
+  
+  .activity-log:not(.expanded) .log-content > div:not(:last-child) {
+    display: none !important;
+  }
+  
+  /* Log Expanded State on Mobile */
   .activity-log.expanded {
     width: auto !important;
-    height: 240px !important;
-    bottom: 100px;
+    height: 200px !important;
+    bottom: 66px;
+    padding: 12px;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
   }
-
+  
+  .activity-log.expanded .log-header {
+    width: 100% !important;
+    margin-bottom: 6px !important;
+  }
+  
+  .activity-log.expanded .log-header-text {
+    display: inline;
+  }
+  
+  .activity-log.expanded #expand-log-btn {
+    top: 16px !important;
+    transform: none !important;
+  }
+  
+  .activity-log.expanded .log-content {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    overflow-y: auto;
+    height: calc(100% - 24px);
+    width: 100%;
+  }
+  
+  .activity-log.expanded .log-content .log-entry {
+    white-space: normal;
+    display: block;
+    margin-bottom: 4px;
+  }
+  
+  .activity-log.expanded .log-content > div {
+    display: block !important;
+  }
+  
   /* Minimal HUD mobile styles */
   .observation-hud {
     top: 10px;
@@ -941,6 +1054,219 @@ canvas, button, .toy-item, .cat-details-card, .sidebar, .settings-panel {
   
   .camera-hud {
     bottom: 200px;
+  }
+}
+
+/* Landscape / Shorter Screen height Optimization */
+@media (max-height: 500px) {
+  header {
+    height: 44px !important;
+    padding: 4px 12px !important;
+    top: 10px !important;
+    left: 10px !important;
+    right: 10px !important;
+  }
+  
+  header h1, .logo-section h1 {
+    display: none !important;
+  }
+  
+  .cat-icon {
+    font-size: 16px !important;
+  }
+  
+  .top-controls {
+    gap: 6px !important;
+  }
+  
+  .icon-btn {
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 13px !important;
+  }
+  
+  .auth-btn {
+    padding: 0 !important;
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 50% !important;
+    justify-content: center !important;
+    font-size: 13px !important;
+  }
+  
+  .auth-btn .auth-text {
+    display: none !important;
+  }
+  
+  /* Place bottom panels side-by-side to save vertical space in landscape */
+  .activity-log {
+    bottom: 10px !important;
+    left: 10px !important;
+    right: auto !important;
+    width: 250px !important;
+    height: 36px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 0 10px !important;
+    justify-content: flex-start !important;
+  }
+  
+  .activity-log:not(.expanded) .log-header {
+    width: auto !important;
+    margin-bottom: 0 !important;
+    flex-shrink: 0 !important;
+  }
+  
+  .activity-log .log-header-text {
+    display: none !important;
+  }
+  
+  .activity-log #expand-log-btn {
+    position: absolute !important;
+    right: 8px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    margin: 0 !important;
+  }
+  
+  .activity-log:not(.expanded) .log-content {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    flex-grow: 1 !important;
+    margin: 0 32px 0 8px !important;
+    overflow: hidden !important;
+    height: 100% !important;
+  }
+  
+  .activity-log:not(.expanded) .log-content .log-entry {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    display: inline-block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    font-size: 11px !important;
+  }
+  
+  .activity-log:not(.expanded) .log-content > div:not(:last-child) {
+    display: none !important;
+  }
+  
+  /* Log Expanded in Landscape */
+  .activity-log.expanded {
+    width: 300px !important;
+    height: 180px !important;
+    bottom: 10px !important;
+    left: 10px !important;
+    right: auto !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+  }
+  
+  .activity-log.expanded .log-header {
+    width: 100% !important;
+    margin-bottom: 4px !important;
+  }
+  
+  .activity-log.expanded .log-header-text {
+    display: inline !important;
+  }
+  
+  .activity-log.expanded #expand-log-btn {
+    top: 14px !important;
+    transform: none !important;
+  }
+  
+  .activity-log.expanded .log-content {
+    display: flex !important;
+    flex-direction: column !important;
+    margin: 0 !important;
+    overflow-y: auto !important;
+    height: calc(100% - 24px) !important;
+    width: 100% !important;
+  }
+  
+  .activity-log.expanded .log-content .log-entry {
+    white-space: normal !important;
+    display: block !important;
+    margin-bottom: 2px !important;
+    font-size: 11px !important;
+  }
+  
+  .activity-log.expanded .log-content > div {
+    display: block !important;
+  }
+  
+  /* Compact side-by-side Toy Box in landscape */
+  .toy-box {
+    bottom: 10px !important;
+    right: 10px !important;
+    left: auto !important;
+    width: auto !important;
+    max-width: calc(100% - 280px) !important;
+    height: 38px !important;
+    padding: 0 8px !important;
+    gap: 6px !important;
+    justify-content: flex-end !important;
+    overflow-x: auto !important;
+  }
+  
+  .toy-box .toy-name {
+    display: none !important;
+  }
+  
+  .toy-item {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: auto !important;
+    border-radius: 50% !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    background: rgba(255, 255, 255, 0.4) !important;
+  }
+  
+  .toy-icon {
+    font-size: 16px !important;
+    margin: 0 !important;
+  }
+  
+  /* Keep cards and panels small to fit within 500px screen height */
+  .sidebar {
+    top: 60px !important;
+    height: calc(100vh - 80px) !important;
+    width: 280px !important;
+    padding: 12px !important;
+    gap: 8px !important;
+  }
+  
+  .settings-panel {
+    top: 60px !important;
+    max-height: calc(100vh - 80px) !important;
+    width: 280px !important;
+    padding: 12px !important;
+    gap: 8px !important;
+  }
+  
+  .cat-details-card {
+    top: 60px !important;
+    width: 280px !important;
+    padding: 10px !important;
+    gap: 6px !important;
+  }
+  
+  .stat-bars {
+    gap: 4px !important;
+  }
+  
+  .stat-bar-group {
+    margin-bottom: 2px !important;
   }
 }
 
