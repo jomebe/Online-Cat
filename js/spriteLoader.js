@@ -498,6 +498,10 @@ async function processBreed(breedKey) {
     : (baseFrames[3] || baseFrames[1] || baseFrames[0]);
   const playFrames = [playFrame, baseFrames[0]]; // pounce → reset
 
+  // Calculate a scale factor to make the base idle frame render at 70px height
+  const idleFrame = baseFrames[0];
+  const scaleFactor = idleFrame ? (70 / idleFrame.height) : 0.22;
+
   const result = {
     idle: idleFrames,
     walk: walkFrames,
@@ -505,6 +509,7 @@ async function processBreed(breedKey) {
     play: playFrames,
     pet: petFrames,
     eat: walkFrames, // eating uses walk animation
+    scaleFactor: scaleFactor,
   };
 
   spriteCache[breedKey] = result;
