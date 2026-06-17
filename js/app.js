@@ -5,6 +5,7 @@ import { Cat } from './cat.js';
 import { Toy, drawLaserDot } from './toy.js';
 import { loadAllSprites } from './spriteLoader.js';
 import { supabase, initSupabaseClient, getSupabaseAnonKey, setSupabaseAnonKey } from './supabase.js';
+import { t, currentLang, applyTranslations } from './i18n.js';
 
 // Application State
 const state = {
@@ -74,9 +75,13 @@ function addInitialCats() {
     return;
   }
 
-  state.cats.push(new Cat('모카', 'ginger', { x: state.canvasWidth * 0.25 }));
-  state.cats.push(new Cat('코코', 'tuxedo', { x: state.canvasWidth * 0.5 }));
-  state.cats.push(new Cat('라떼', 'siamese', { x: state.canvasWidth * 0.7 }));
+  const nameMocha = currentLang === 'ko' ? '모카' : 'Mocha';
+  const nameCoco = currentLang === 'ko' ? '코코' : 'Coco';
+  const nameLatte = currentLang === 'ko' ? '라떼' : 'Latte';
+
+  state.cats.push(new Cat(nameMocha, 'ginger', { x: state.canvasWidth * 0.25 }));
+  state.cats.push(new Cat(nameCoco, 'tuxedo', { x: state.canvasWidth * 0.5 }));
+  state.cats.push(new Cat(nameLatte, 'siamese', { x: state.canvasWidth * 0.7 }));
   
   // Update state positions
   state.cats.forEach(cat => cat.y = state.floorY - 5);
@@ -123,7 +128,7 @@ function loadToysFromLocalStorage() {
           if (data.vy !== undefined) toy.vy = data.vy;
           return toy;
         });
-        addLog(`📦 저장된 장난감 ${state.toys.length}개를 불러왔습니다.`);
+        addLog(t('log_cats_loaded_toys', { count: state.toys.length }));
       }
     }
   } catch (err) {
@@ -175,7 +180,7 @@ function loadCatsFromLocalStorage() {
           cat.y = state.floorY - 5;
           return cat;
         });
-        addLog(`📦 저장된 고양이 ${state.cats.length}마리를 불러왔습니다.`);
+        addLog(t('log_cats_loaded_local', { count: state.cats.length }));
         return true;
       }
     }
@@ -228,7 +233,7 @@ async function loadCatsFromDatabase() {
         cat.y = state.floorY - 5;
         return cat;
       });
-      addLog(`☁️ 저장된 고양이 ${dbCats.length}마리를 불러왔습니다.`);
+      addLog(t('log_cats_loaded', { count: dbCats.length }));
     } else {
       // Database is empty. Migrate local cats if any exist, or add default initial cats
       if (state.cats.length === 0) {
@@ -239,7 +244,7 @@ async function loadCatsFromDatabase() {
     }
   } catch (err) {
     console.error('Failed to load cats from database:', err.message);
-    addLog(`⚠️ 고양이 데이터를 불러오는데 실패했습니다: ${err.message}`);
+    addLog(t('alert_cats_load_failed', { msg: err.message }));
     // Fallback: if there are no cats, add default ones so the game is playable
     if (state.cats.length === 0) {
       addInitialCats();
@@ -352,10 +357,10 @@ function addLog(text) {
 
 // Map Cat states for logging (only major events to prevent spam)
 const stateLogMap = {
-  'sleep': '💤 낮잠을 자기 시작했습니다.',
-  'eat': '🍲 물고기 간식을 맛있게 냠냠 먹고 있습니다.',
-  'play': '🧶 신나게 털실 뭉치를 굴리며 놀고 있습니다.',
-  'pet': '❤️ 골골송을 부르며 기분 좋게 애교를 부립니다.'
+  'sleep': 'cat_state_sleep_default',
+  'eat': 'cat_state_eat',
+  'play': 'cat_state_play',
+  'pet': 'cat_state_pet'
 };
 
 // Track old states to log changes
@@ -368,11 +373,12 @@ function trackCatStates() {
       catPreviousStates[cat.id] = cat.state;
       // Log only interesting major interactions
       if (stateLogMap[cat.state]) {
-        let msg = stateLogMap[cat.state];
+        let key = stateLogMap[cat.state];
         if (cat.state === 'sleep' && cat.inBox) {
-          msg = '📦 골판지 상자 속으로 쏙 들어가서 낮잠을 잡니다. zZ';
+          key = 'cat_state_sleep';
         }
-        addLog(`<strong>${cat.name}</strong>(이)가 ${msg}`);
+        const msg = t(key);
+        addLog(t('log_cat_state', { name: cat.name, msg: msg }));
       }
     }
   });
@@ -387,7 +393,7 @@ function spawnToy(type, x, y) {
       const cat = state.cats.find(c => c.id === oldestToy.claimedBy);
       if (cat) cat.inBox = null;
     }
-    addLog('정리가 필요해 오래된 장난감을 치웠습니다.');
+    addLog(t('log_clear_old'));
   }
 
   // Random color for yarn
@@ -397,12 +403,12 @@ function spawnToy(type, x, y) {
   const toy = new Toy(type, x, y, { color: randomColor });
   state.toys.push(toy);
   
-  let koreanName = '장난감';
-  if (type === 'yarn') koreanName = '🧶 털실 뭉치';
-  else if (type === 'box') koreanName = '📦 골판지 상자';
-  else if (type === 'treat') koreanName = '🐟 물고기 간식';
+  let logKey = 'log_spawn_toy';
+  if (type === 'yarn') logKey = 'log_spawn_yarn';
+  else if (type === 'box') logKey = 'log_spawn_box';
+  else if (type === 'treat') logKey = 'log_spawn_treat';
 
-  addLog(`바닥에 ${koreanName}를 놓았습니다.`);
+  addLog(t(logKey));
   playChime();
   saveToysToLocalStorage();
 }
@@ -410,7 +416,7 @@ function spawnToy(type, x, y) {
 // HTML5 Drag Drop support for spawning from inventory
 function clearAllToys() {
   if (state.toys.length === 0) {
-    addLog('치울 장난감이 없습니다.');
+    addLog(t('log_clear_no_toys'));
     return;
   }
   
@@ -433,7 +439,7 @@ function clearAllToys() {
   });
   
   state.toys = [];
-  addLog('🧹 방 안의 모든 장난감과 상자를 깨끗이 치웠습니다.');
+  addLog(t('log_clear_all'));
   playChime();
   saveToysToLocalStorage();
 }
@@ -459,12 +465,8 @@ function removeIndividualToy(toy, index) {
 
   state.toys.splice(index, 1);
   
-  let koreanName = '장난감';
-  if (toy.type === 'yarn') koreanName = '🧶 털실 뭉치';
-  else if (toy.type === 'box') koreanName = '📦 상자';
-  else if (toy.type === 'treat') koreanName = '🐟 간식';
-  
-  addLog(`바닥에 놓인 ${koreanName}을(를) 치웠습니다.`);
+  const name = t('toy_' + toy.type);
+  addLog(t('log_clear_individual', { name: name }));
   playChime();
   saveToysToLocalStorage();
 }
@@ -482,7 +484,7 @@ toyItems.forEach(item => {
       if (state.broomActive) {
         item.classList.add('active');
         canvas.classList.add('cursor-broom-mode');
-        addLog('🧹 빗자루 모드가 활성화되었습니다. 바닥의 장난감을 클릭하여 개별적으로 치울 수 있습니다. (더블 클릭 시 전체 청소)');
+        addLog(t('log_broom_on'));
         playChime();
         
         // Deactivate laser pointer if active
@@ -493,7 +495,7 @@ toyItems.forEach(item => {
       } else {
         item.classList.remove('active');
         canvas.classList.remove('cursor-broom-mode');
-        addLog('🧹 빗자루 모드를 비활성화했습니다.');
+        addLog(t('log_broom_off'));
       }
     });
 
@@ -521,14 +523,14 @@ toyItems.forEach(item => {
       if (state.laser.active) {
         item.classList.add('active');
         canvas.style.cursor = 'crosshair';
-        addLog('🔦 레이저 포인터를 켰습니다. 마우스를 따라 다닙니다.');
+        addLog(t('log_laser_on'));
         playChime();
         // Deactivate other dragging
         state.draggedToy = null;
       } else {
         item.classList.remove('active');
         canvas.style.cursor = 'default';
-        addLog('🔦 레이저 포인터를 껐습니다.');
+        addLog(t('log_laser_off'));
       }
     });
     return;
@@ -716,13 +718,13 @@ function handlePointerMove(e) {
     if (state.draggedCat.y > state.floorY + 40) {
       if (!state.draggedCat.observationMode) {
         state.draggedCat.observationMode = true;
-        addLog(`🔍 <strong>${state.draggedCat.name}</strong> 관찰 모드가 시작되었습니다. 쓰다듬어(Pet) 보세요!`);
+        addLog(t('log_obs_start', { name: state.draggedCat.name }));
         playChime();
       }
     } else if (state.draggedCat.y < state.floorY + 15) { // drag back up above floor
       if (state.draggedCat.observationMode) {
         state.draggedCat.observationMode = false;
-        addLog(`🏡 <strong>${state.draggedCat.name}</strong>(이)가 다시 방으로 돌아갔습니다.`);
+        addLog(t('log_obs_end', { name: state.draggedCat.name }));
         playChime();
       }
     }
@@ -741,7 +743,7 @@ function handlePointerMove(e) {
       state.dragOffset.x = mx - state.draggedCat.x;
       state.dragOffset.y = my - state.draggedCat.y;
       state.pettingCat = null;
-      addLog(`🖐️ <strong>${state.draggedCat.name}</strong>를 안아 올렸습니다.`);
+      addLog(t('log_pet_lift', { name: state.draggedCat.name }));
     }
   }
 
@@ -811,7 +813,7 @@ canvas.addEventListener('dblclick', (e) => {
   const clickedCat = [...state.cats].reverse().find(c => c.isClicked(mx, my));
   if (clickedCat) {
     state.camera.targetCat = clickedCat;
-    document.getElementById('camera-target-name').textContent = clickedCat.name;
+    document.getElementById('camera-hud-text').innerHTML = t('tracking_hud', { name: clickedCat.name });
     document.getElementById('camera-hud').classList.remove('hidden');
     hideCatDetails();
     playChime();
@@ -864,7 +866,7 @@ const hideUiBtn = document.getElementById('hide-ui-btn');
 const takePhotoBtn = document.getElementById('take-photo-btn');
 const takePhotoCinematicBtn = document.getElementById('take-photo-cinematic-btn');
 const cameraHud = document.getElementById('camera-hud');
-const cameraTargetName = document.getElementById('camera-target-name');
+const cameraHudText = document.getElementById('camera-hud-text');
 const stopTrackBtn = document.getElementById('stop-track-btn');
 
 const breedMap = {
@@ -882,8 +884,8 @@ const breedMap = {
 function showCatDetails(cat) {
   state.selectedCat = cat;
   detailName.textContent = cat.name;
-  detailBreed.textContent = `묘종: ${breedMap[cat.breed] || cat.breed}`;
-  detailGender.textContent = `성별: ${cat.gender === 'male' ? '수컷 ♂' : '암컷 ♀'}`;
+  detailBreed.textContent = `${t('cat_breed')}: ${t('breed_' + cat.breed)}`;
+  detailGender.textContent = `${t('cat_gender')}: ${cat.gender === 'male' ? t('cat_gender_male') : t('cat_gender_female')}`;
   
   updateDetailsBars();
 
@@ -917,7 +919,7 @@ trackBtn.addEventListener('click', () => {
   state.camera.targetCat = state.selectedCat;
   
   // Show tracking HUD
-  cameraTargetName.textContent = state.selectedCat.name;
+  cameraHudText.innerHTML = t('tracking_hud', { name: state.selectedCat.name });
   cameraHud.classList.remove('hidden');
   
   // Close details card to keep the view clean
@@ -998,12 +1000,12 @@ function takeSnapshot() {
       link.href = dataUrl;
       link.click();
       
-      addLog('💾 고양이 사진을 파일로 저장했습니다.');
+      addLog(t('log_photo_saved'));
       playChime();
     };
   } catch (err) {
     console.error('Failed to capture canvas snapshot:', err);
-    alert('사진 촬영에 실패했습니다: ' + err.message);
+    alert(t('alert_photo_failed', { msg: err.message }));
   }
 }
 
@@ -1032,10 +1034,10 @@ closePhotoBtnBottom.addEventListener('click', (e) => {
 // Cat Rename
 document.getElementById('rename-btn').addEventListener('click', () => {
   if (!state.selectedCat) return;
-  const newName = prompt('새로운 이름을 지어주세요 (최대 8자):', state.selectedCat.name);
+  const newName = prompt(t('prompt_rename'), state.selectedCat.name);
   if (newName && newName.trim().length > 0) {
     const cleaned = newName.trim().substring(0, 8);
-    addLog(`<strong>${state.selectedCat.name}</strong>의 이름이 <strong>${cleaned}</strong>(으)로 변경되었습니다.`);
+    addLog(t('log_name_changed', { oldName: state.selectedCat.name, newName: cleaned }));
     state.selectedCat.name = cleaned;
     detailName.textContent = cleaned;
     
@@ -1051,10 +1053,10 @@ document.getElementById('obs-rename-btn').addEventListener('click', () => {
   const observedCat = state.cats.find(c => c.observationMode);
   if (!observedCat) return;
   
-  const newName = prompt('새로운 이름을 지어주세요 (최대 8자):', observedCat.name);
+  const newName = prompt(t('prompt_rename'), observedCat.name);
   if (newName && newName.trim().length > 0) {
     const cleaned = newName.trim().substring(0, 8);
-    addLog(`<strong>${observedCat.name}</strong>의 이름이 <strong>${cleaned}</strong>(으)로 변경되었습니다.`);
+    addLog(t('log_name_changed', { oldName: observedCat.name, newName: cleaned }));
     observedCat.name = cleaned;
     document.getElementById('obs-cat-name').textContent = cleaned;
     
@@ -1069,7 +1071,7 @@ document.getElementById('obs-rename-btn').addEventListener('click', () => {
 document.getElementById('release-btn').addEventListener('click', () => {
   if (!state.selectedCat) return;
   const cat = state.selectedCat;
-  if (confirm(`${cat.name}를 좋은 곳으로 입양 보낼까요?\n언제든 새로운 고양이를 다시 데려올 수 있어요.`)) {
+  if (confirm(t('alert_adopt_out_confirm', { name: cat.name }))) {
     // Remove cat
     const catId = cat.id;
     state.cats = state.cats.filter(c => c.id !== catId);
@@ -1087,7 +1089,7 @@ document.getElementById('release-btn').addEventListener('click', () => {
       }
     });
 
-    addLog(`🐾 <strong>${cat.name}</strong>(이)가 따뜻한 가정으로 입양을 떠났습니다. 행복하렴!`);
+    addLog(t('log_release_success', { name: cat.name }));
     hideCatDetails();
     playChime();
 
@@ -1129,12 +1131,12 @@ const catNameInput = document.getElementById('cat-name-input');
 createCatBtn.addEventListener('click', () => {
   const name = catNameInput.value.trim();
   if (!name) {
-    alert('고양이 이름을 지어주세요!');
+    alert(t('alert_name_required'));
     return;
   }
   
   if (state.cats.length >= 6) {
-    alert('안식처가 꽉 찼습니다! (최대 6마리)\n일부 고양이를 입양 보낸 뒤 데려와 주세요.');
+    alert(t('alert_sanctuary_full'));
     return;
   }
 
@@ -1146,7 +1148,7 @@ createCatBtn.addEventListener('click', () => {
   newCat.y = state.floorY - 5;
   
   state.cats.push(newCat);
-  addLog(`💖 새로운 묘종(<strong>${breedMap[selectedBreed]}</strong>)인 <strong>${name}</strong>(이)가 안식처에 찾아왔습니다!`);
+  addLog(t('log_adopt_success', { breed: t('breed_' + selectedBreed), name: name }));
   
   // Sync to database if logged in
   if (state.user && supabase) {
@@ -1174,7 +1176,7 @@ document.getElementById('exit-obs-btn').addEventListener('click', () => {
   const observedCat = state.cats.find(c => c.observationMode);
   if (observedCat) {
     observedCat.observationMode = false;
-    addLog(`🏡 <strong>${observedCat.name}</strong>(이)가 다시 방으로 돌아갔습니다.`);
+    addLog(t('log_obs_end', { name: observedCat.name }));
     playChime();
   }
 });
@@ -1185,10 +1187,10 @@ muteBtn.addEventListener('click', () => {
   toggleMute(state.isMuted);
   if (state.isMuted) {
     muteBtn.textContent = '🔇';
-    addLog('🔊 사운드가 음소거 되었습니다.');
+    addLog(t('log_sound_muted'));
   } else {
     muteBtn.textContent = '🔊';
-    addLog('🔊 사운드가 켜졌습니다.');
+    addLog(t('log_sound_unmuted'));
     
     // Resume weather sounds if active
     if (state.weather === 'rain') {
@@ -1224,7 +1226,7 @@ timeBtns.forEach(btn => {
       document.body.classList.remove('dark-theme');
     }
     
-    addLog(`시간을 <strong>${btn.textContent}</strong> 테마로 변경했습니다.`);
+    addLog(t('log_time_changed', { time: btn.textContent }));
     playChime();
   });
 });
@@ -1263,7 +1265,7 @@ weatherBtns.forEach(btn => {
       stopAmbient();
     }
     
-    addLog(`날씨를 <strong>${btn.textContent}</strong> 효과로 설정했습니다.`);
+    addLog(t('log_weather_changed', { weather: btn.textContent }));
     playChime();
   });
 });
@@ -1375,7 +1377,7 @@ function loop(timestamp) {
               }
               
               // Activity log
-              addLog(`💥 <strong>${cat.name}</strong>(이)가 날아온 털뭉치에 맞고 깜짝 놀랐습니다!`);
+              addLog(t('log_cat_surprise', { name: cat.name }));
             }
           }
         });
@@ -1452,9 +1454,9 @@ function loop(timestamp) {
     document.getElementById('obs-cat-name').textContent = observedCat.name;
     
     // Set Breed and Gender details
-    const breedText = breedMap[observedCat.breed] || observedCat.breed;
-    const genderText = observedCat.gender === 'male' ? '수컷 ♂' : '암컷 ♀';
-    document.getElementById('obs-cat-details').textContent = `묘종: ${breedText} · 성별: ${genderText}`;
+    const breedText = t('breed_' + observedCat.breed);
+    const genderText = observedCat.gender === 'male' ? t('cat_gender_male') : t('cat_gender_female');
+    document.getElementById('obs-cat-details').textContent = `${t('cat_breed')}: ${breedText} · ${t('cat_gender')}: ${genderText}`;
     
     // Affection
     document.getElementById('obs-bar-affection').style.width = observedCat.affection + '%';
@@ -1538,7 +1540,7 @@ const authBtn = document.getElementById('auth-btn');
 function ensureSupabaseInitialized() {
   let key = getSupabaseAnonKey();
   if (!key) {
-    key = prompt('Supabase Anon Key를 입력해 주세요 (최초 1회 저장):\n대시보드 > Project Settings > API > anon public key 에서 복사할 수 있습니다.');
+    key = prompt(t('prompt_supabase_key'));
     if (key && key.trim()) {
       setSupabaseAnonKey(key.trim());
     } else {
@@ -1551,7 +1553,7 @@ function ensureSupabaseInitialized() {
   }
 
   if (!supabase) {
-    alert('Supabase 클라이언트 초기화에 실패했습니다. 올바른 Anon Key를 입력했는지 확인해 주세요.');
+    alert(t('alert_supabase_init_failed'));
     setSupabaseAnonKey(""); // reset
     return false;
   }
@@ -1561,7 +1563,7 @@ function ensureSupabaseInitialized() {
 async function handleAuthClick() {
   if (state.user) {
     // Log out
-    if (confirm('계정에서 로그아웃하시겠습니까?')) {
+    if (confirm(t('confirm_logout'))) {
       await supabase.auth.signOut();
     }
   } else {
@@ -1593,16 +1595,16 @@ document.getElementById('email-signup-btn').addEventListener('click', async () =
   const password = document.getElementById('login-password').value;
   
   if (!email || !password) {
-    alert('이메일과 비밀번호를 모두 입력해 주세요.');
+    alert(t('alert_input_email_password'));
     return;
   }
   
   if (password.length < 6) {
-    alert('비밀번호는 최소 6자 이상이어야 합니다.');
+    alert(t('alert_password_min_len'));
     return;
   }
   
-  addLog('☁️ 회원가입을 요청 중입니다...');
+  addLog(t('log_signup_pending'));
   try {
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -1610,20 +1612,20 @@ document.getElementById('email-signup-btn').addEventListener('click', async () =
     });
     
     if (error) {
-      alert('회원가입 실패: ' + error.message);
-      addLog('❌ 회원가입 실패: ' + error.message);
+      alert(t('alert_signup_failed_dialog', { msg: error.message }));
+      addLog(t('log_signup_failed', { msg: error.message }));
     } else {
       if (data.session) {
-        alert('회원가입 및 로그인에 성공했습니다!');
+        alert(t('alert_signup_success'));
         document.getElementById('login-modal').classList.add('hidden');
       } else {
-        alert('회원가입 완료! 메일함(또는 스팸함)에서 인증 이메일을 확인해 주세요.');
-        addLog('✉️ 이메일 인증 메일이 발송되었습니다.');
+        alert(t('alert_signup_email_verify'));
+        addLog(t('log_signup_email_sent'));
         document.getElementById('login-modal').classList.add('hidden');
       }
     }
   } catch (err) {
-    alert('오류 발생: ' + err.message);
+    alert(t('alert_error', { msg: err.message }));
   }
 });
 
@@ -1635,11 +1637,11 @@ document.getElementById('email-login-btn').addEventListener('click', async () =>
   const password = document.getElementById('login-password').value;
   
   if (!email || !password) {
-    alert('이메일과 비밀번호를 모두 입력해 주세요.');
+    alert(t('alert_input_email_password'));
     return;
   }
   
-  addLog('☁️ 로그인을 요청 중입니다...');
+  addLog(t('log_login_pending'));
   try {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -1647,14 +1649,14 @@ document.getElementById('email-login-btn').addEventListener('click', async () =>
     });
     
     if (error) {
-      alert('로그인 실패: ' + error.message);
-      addLog('❌ 로그인 실패: ' + error.message);
+      alert(t('alert_login_failed_dialog', { msg: error.message }));
+      addLog(t('log_login_failed', { msg: error.message }));
     } else {
-      alert('로그인에 성공했습니다!');
+      alert(t('alert_login_success'));
       document.getElementById('login-modal').classList.add('hidden');
     }
   } catch (err) {
-    alert('오류 발생: ' + err.message);
+    alert(t('alert_error', { msg: err.message }));
   }
 });
 
@@ -1662,7 +1664,7 @@ document.getElementById('email-login-btn').addEventListener('click', async () =>
 document.getElementById('google-login-btn').addEventListener('click', async () => {
   if (!ensureSupabaseInitialized()) return;
   
-  addLog('☁️ 구글 로그인 창으로 이동 중...');
+  addLog(t('log_google_pending'));
   try {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -1672,11 +1674,11 @@ document.getElementById('google-login-btn').addEventListener('click', async () =
     });
     
     if (error) {
-      alert('구글 로그인 오류: ' + error.message);
-      addLog('❌ 구글 로그인 오류: ' + error.message);
+      alert(t('alert_google_failed_dialog', { msg: error.message }));
+      addLog(t('log_signup_failed', { msg: error.message }));
     }
   } catch (err) {
-    alert('오류 발생: ' + err.message);
+    alert(t('alert_error', { msg: err.message }));
   }
 });
 
@@ -1686,22 +1688,22 @@ function setupAuthListener() {
   supabase.auth.onAuthStateChange(async (event, session) => {
     if (session) {
       state.user = session.user;
-      authBtn.textContent = '🚪 로그아웃';
+      authBtn.textContent = t('logout');
       authBtn.classList.add('logged-in');
-      authBtn.title = `로그인 계정: ${session.user.email}`;
-      addLog(`🔑 계정(${session.user.email})으로 로그인했습니다.`);
+      authBtn.title = t('logged_in_as', { email: session.user.email });
+      addLog(t('log_login_success', { email: session.user.email }));
       
       // Load cats from Supabase (non-blocking)
       loadCatsFromDatabase();
     } else {
       state.user = null;
-      authBtn.textContent = '🔑 로그인';
+      authBtn.textContent = t('login');
       authBtn.classList.remove('logged-in');
-      authBtn.title = '로그인';
+      authBtn.title = t('login');
       
       // Reset to initial cats if user logged out
       if (event === 'SIGNED_OUT') {
-        addLog('🚪 계정에서 로그아웃했습니다.');
+        addLog(t('log_logout_success'));
         state.cats = [];
         addInitialCats();
       }
@@ -1713,6 +1715,19 @@ function setupAuthListener() {
 // Strategy: start game loop immediately with default cats,
 // then load real sprites in background and sync with DB if logged in.
 async function initGame() {
+  // Set HTML language attribute dynamically
+  document.documentElement.lang = currentLang;
+
+  // Apply translations to static HTML elements
+  applyTranslations();
+
+  // Update SEO title and description dynamically
+  document.title = t('app_title_seo');
+  const descMeta = document.querySelector('meta[name="description"]');
+  if (descMeta) {
+    descMeta.setAttribute('content', t('app_desc_seo'));
+  }
+
   // 1. Populate default cats instantly so room is alive immediately
   addInitialCats();
   loadToysFromLocalStorage();
@@ -1728,10 +1743,10 @@ async function initGame() {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           state.user = session.user;
-          authBtn.textContent = '🚪 로그아웃';
+          authBtn.textContent = t('logout');
           authBtn.classList.add('logged-in');
-          authBtn.title = `로그인 계정: ${session.user.email}`;
-          addLog(`🔑 기존 세션(${session.user.email})을 불러왔습니다.`);
+          authBtn.title = t('logged_in_as', { email: session.user.email });
+          addLog(t('log_session_loaded', { email: session.user.email }));
           // Load cats from database (will overwrite state.cats dynamically once fetched)
           loadCatsFromDatabase();
         }
@@ -1749,7 +1764,7 @@ async function initGame() {
     console.warn('Sprite loading failed, using fallback:', err);
   }
 
-  addLog('모카, 코코, 라떼 세 고양이가 한가롭게 노닐고 있습니다. 쓰다듬어보세요!');
+  addLog(t('log_default_message'));
 }
 
 initGame();

@@ -26,84 +26,84 @@
     <canvas id="main-canvas"></canvas>
 
     <!-- Cinematic UI Toggles & Camera Tracking HUD -->
-    <button id="show-ui-btn" class="show-ui-btn hidden" title="UI 보이기">👁️</button>
-    <button id="take-photo-cinematic-btn" class="take-photo-cinematic-btn hidden" title="사진 찍기">📷</button>
+    <button id="show-ui-btn" class="show-ui-btn hidden" data-i18n-title="show_ui" title="UI 보이기">👁️</button>
+    <button id="take-photo-cinematic-btn" class="take-photo-cinematic-btn hidden" data-i18n-title="take_photo" title="사진 찍기">📷</button>
     
     <div id="camera-hud" class="camera-hud glass-panel hidden">
-      <span>🎥 <strong id="camera-target-name">고양이</strong> 추적 중</span>
-      <button id="stop-track-btn">추적 해제</button>
+      <span id="camera-hud-text">🎥 <strong id="camera-target-name">고양이</strong> 추적 중</span>
+      <button id="stop-track-btn" data-i18n="stop_tracking">추적 해제</button>
     </div>
 
     <!-- Guide hint -->
-    <div id="pet-indicator" class="pet-indicator">🐾 마우스로 고양이를 쓰다듬어(Pet) 보세요!</div>
+    <div id="pet-indicator" class="pet-indicator" data-i18n="guide_pet">🐾 마우스로 고양이를 쓰다듬어(Pet) 보세요!</div>
 
     <!-- Minimal Observation HUD -->
     <div id="observation-hud" class="observation-hud">
       <div class="obs-info">
         <div style="display:flex; align-items:center; gap:8px;">
-          <span class="obs-title">🔍 관찰 모드: <strong id="obs-cat-name">고양이</strong></span>
-          <button id="obs-rename-btn" style="background:rgba(255,255,255,0.25); border:none; cursor:pointer; font-size:11px; padding:2px 8px; border-radius:10px; font-family:var(--font-title); transition:all 0.2s;">✏️ 이름 변경</button>
+          <span class="obs-title">🔍 <span data-i18n="obs_hud_title">관찰 모드</span>: <strong id="obs-cat-name">고양이</strong></span>
+          <button id="obs-rename-btn" style="background:rgba(255,255,255,0.25); border:none; cursor:pointer; font-size:11px; padding:2px 8px; border-radius:10px; font-family:var(--font-title); transition:all 0.2s;" data-i18n="rename">✏️ 이름 변경</button>
         </div>
         <div id="obs-cat-details" style="font-size:12px; opacity:0.8; margin-top:2px;">종류: 태비 · 성별: ♀</div>
         <div class="obs-stats">
           <div class="obs-stat-item">
-            <span>💖 친밀도</span>
+            <span data-i18n="cat_stat_affection">💖 친밀도</span>
             <div class="obs-bar-bg"><div id="obs-bar-affection" class="obs-bar-fill affection"></div></div>
             <span id="obs-label-affection" style="font-size:11px; min-width:28px; text-align:right; font-weight:600;">80%</span>
           </div>
           <div class="obs-stat-item">
-            <span>⚡ 에너지</span>
+            <span data-i18n="cat_stat_energy">⚡ 에너지</span>
             <div class="obs-bar-bg"><div id="obs-bar-energy" class="obs-bar-fill energy"></div></div>
             <span id="obs-label-energy" style="font-size:11px; min-width:28px; text-align:right; font-weight:600;">50%</span>
           </div>
           <div class="obs-stat-item">
-            <span>🍲 포만감</span>
+            <span data-i18n="cat_stat_hunger_label">🍲 포만감</span>
             <div class="obs-bar-bg"><div id="obs-bar-hunger" class="obs-bar-fill hunger"></div></div>
             <span id="obs-label-hunger" style="font-size:11px; min-width:28px; text-align:right; font-weight:600;">30%</span>
           </div>
         </div>
       </div>
-      <button id="exit-obs-btn" class="exit-obs-btn">🏡 방으로 보내기</button>
+      <button id="exit-obs-btn" class="exit-obs-btn" data-i18n="obs_send_back">🏡 방으로 보내기</button>
     </div>
 
     <!-- Header Section -->
     <header class="glass-panel">
       <div class="logo-section">
         <span class="cat-icon">🐈</span>
-        <h1>Online Cat</h1>
+        <h1 data-i18n="app_title">Online Cat</h1>
       </div>
       <div class="top-controls">
-        <button id="auth-btn" class="auth-btn" title="로그인">🔑 로그인</button>
-        <button id="take-photo-btn" class="icon-btn" title="사진 찍기 (화면 캡처)">📷</button>
-        <button id="hide-ui-btn" class="icon-btn" title="UI 숨기기 (노는 모습만 보기)">👁️</button>
-        <button id="settings-btn" class="icon-btn" title="환경 설정">⚙️</button>
-        <button id="mute-btn" class="icon-btn" title="소리 켜기/끄기">🔊</button>
-        <button id="toggle-creator-btn" class="icon-btn" title="고양이 만들기">➕</button>
+        <button id="auth-btn" class="auth-btn" data-i18n="login" data-i18n-title="login" title="로그인">🔑 로그인</button>
+        <button id="take-photo-btn" class="icon-btn" data-i18n-title="take_photo_title" title="사진 찍기 (화면 캡처)">📷</button>
+        <button id="hide-ui-btn" class="icon-btn" data-i18n-title="hide_ui" title="UI 숨기기 (노는 모습만 보기)">👁️</button>
+        <button id="settings-btn" class="icon-btn" data-i18n-title="settings_title" title="환경 설정">⚙️</button>
+        <button id="mute-btn" class="icon-btn" data-i18n-title="volume_title" title="소리 켜기/끄기">🔊</button>
+        <button id="toggle-creator-btn" class="icon-btn" data-i18n-title="add_cat_title" title="고양이 만들기">➕</button>
       </div>
     </header>
 
     <!-- Environmental Settings Modal -->
     <div id="settings-panel" class="settings-panel glass-panel hidden">
-      <h3>🌸 환경 설정</h3>
+      <h3 data-i18n="settings_header">🌸 환경 설정</h3>
       <div class="settings-group">
-        <label>시간대 설정 (배경 테마)</label>
+        <label data-i18n="settings_time">시간대 설정 (배경 테마)</label>
         <div class="btn-row" id="time-btns">
-          <button data-time="morning">아침</button>
-          <button data-time="afternoon" class="active">낮</button>
-          <button data-time="evening">저녁</button>
-          <button data-time="night">밤</button>
+          <button data-time="morning" data-i18n="time_morning">아침</button>
+          <button data-time="afternoon" class="active" data-i18n="time_afternoon">낮</button>
+          <button data-time="evening" data-i18n="time_evening">저녁</button>
+          <button data-time="night" data-i18n="time_night">밤</button>
         </div>
       </div>
       <div class="settings-group">
-        <label>날씨 및 배경 효과</label>
+        <label data-i18n="settings_weather">날씨 및 배경 효과</label>
         <div class="btn-row" id="weather-btns">
-          <button data-weather="calm" class="active">평온함</button>
-          <button data-weather="sakura">벚꽃 비</button>
-          <button data-weather="rain">빗소리</button>
+          <button data-weather="calm" class="active" data-i18n="weather_calm">평온함</button>
+          <button data-weather="sakura" data-i18n="weather_sakura">벚꽃 비</button>
+          <button data-weather="rain" data-i18n="weather_rain">빗소리</button>
         </div>
       </div>
       <div class="settings-group">
-        <label>배경 음량 조절</label>
+        <label data-i18n="settings_sound">배경 음량 조절</label>
         <div style="display:flex; align-items:center; gap: 10px;">
           <span style="font-size:12px;">🔈</span>
           <input type="range" id="volume-slider" min="0" max="0.5" step="0.05" value="0.15" style="flex:1; accent-color:var(--primary); cursor:pointer;">
@@ -125,7 +125,7 @@
       <div class="stat-bars">
         <div class="stat-bar-group">
           <div class="stat-label">
-            <span>❤️ 애정수치 (Affection)</span>
+            <span data-i18n="cat_stat_affection">❤️ 애정수치 (Affection)</span>
             <span id="label-affection">80%</span>
           </div>
           <div class="progress-track">
@@ -134,7 +134,7 @@
         </div>
         <div class="stat-bar-group">
           <div class="stat-label">
-            <span>⚡ 활력수치 (Energy)</span>
+            <span data-i18n="cat_stat_energy">⚡ 활력수치 (Energy)</span>
             <span id="label-energy">50%</span>
           </div>
           <div class="progress-track">
@@ -143,7 +143,7 @@
         </div>
         <div class="stat-bar-group">
           <div class="stat-label">
-            <span>🍲 포만감 (Starving)</span>
+            <span data-i18n="cat_stat_hunger_label">🍲 포만감 (Starving)</span>
             <span id="label-hunger">30%</span>
           </div>
           <div class="progress-track">
@@ -153,67 +153,65 @@
       </div>
 
       <div class="card-actions">
-        <button id="track-btn" style="background:#54a0ff; color:white;">🎥 카메라 추적</button>
-        <button id="rename-btn">✏️ 이름 변경</button>
-        <button id="release-btn" class="release-btn">👋 입양 보내기</button>
+        <button id="track-btn" style="background:#54a0ff; color:white;" data-i18n="camera_track">🎥 카메라 추적</button>
+        <button id="rename-btn" data-i18n="rename">✏️ 이름 변경</button>
+        <button id="release-btn" class="release-btn" data-i18n="release">👋 입양 보내기</button>
       </div>
     </div>
 
     <!-- Cat Creator Drawer -->
     <div id="sidebar" class="sidebar glass-panel">
-      <h2>🐱 고양이 만들기</h2>
-      <p style="font-size:13px; opacity:0.8; margin-top:-10px; margin-bottom:10px;">나만의 귀여운 단짝을 만들어보세요.</p>
+      <h2 data-i18n="creator_header">🐱 고양이 만들기</h2>
+      <p style="font-size:13px; opacity:0.8; margin-top:-10px; margin-bottom:10px;" data-i18n="creator_sub">나만의 귀여운 단짝을 만들어보세요.</p>
       
       <div class="form-group">
-        <label for="cat-name-input">고양이 이름</label>
-        <input type="text" id="cat-name-input" placeholder="고양이 이름을 적어주세요..." maxlength="8">
+        <label for="cat-name-input" data-i18n="creator_name_label">고양이 이름</label>
+        <input type="text" id="cat-name-input" data-i18n-placeholder="creator_name_placeholder" placeholder="고양이 이름을 적어주세요..." maxlength="8">
       </div>
 
       <div class="form-group">
-        <label>묘종 선택</label>
+        <label data-i18n="creator_breed_label">묘종 선택</label>
         <div class="selection-grid" id="breed-selector">
           <div class="grid-item selected" data-breed="tabby">
             <span class="emoji">🦭</span>
-            <span>태비</span>
+            <span data-i18n="breed_tabby">태비</span>
           </div>
           <div class="grid-item" data-breed="tuxedo">
             <span class="emoji">🐧</span>
-            <span>턱시도</span>
+            <span data-i18n="breed_tuxedo">턱시도</span>
           </div>
           <div class="grid-item" data-breed="calico">
             <span class="emoji">🐹</span>
-            <span>삼색이</span>
+            <span data-i18n="breed_calico">삼색이</span>
           </div>
           <div class="grid-item" data-breed="siamese">
             <span class="emoji">🦊</span>
-            <span>샴</span>
+            <span data-i18n="breed_siamese">샴</span>
           </div>
           <div class="grid-item" data-breed="ginger">
             <span class="emoji">🦁</span>
-            <span>치즈</span>
+            <span data-i18n="breed_ginger">치즈</span>
           </div>
           <div class="grid-item" data-breed="black">
             <span class="emoji">🐈‍⬛</span>
-            <span>올블랙</span>
+            <span data-i18n="breed_black">올블랙</span>
           </div>
           <div class="grid-item" data-breed="white">
             <span class="emoji">🐈</span>
-            <span>하양이</span>
+            <span data-i18n="breed_white">하양이</span>
           </div>
           <div class="grid-item" data-breed="grey">
             <span class="emoji">🐨</span>
-            <span>러시안블루</span>
+            <span data-i18n="breed_grey">러시안블루</span>
           </div>
           <div class="grid-item" data-breed="scottish">
             <span class="emoji">🦉</span>
-            <span>폴드</span>
+            <span data-i18n="breed_scottish">폴드</span>
           </div>
         </div>
       </div>
 
-
-
-      <button id="create-cat-btn" class="primary-btn">새로운 고양이 입양하기 ✨</button>
+      <button id="create-cat-btn" class="primary-btn" data-i18n="creator_adopt_btn">새로운 고양이 입양하기 ✨</button>
 
       <!-- Sidebar Native Ad -->
       <div class="sidebar-ad-container" style="margin-top: 15px; width: 100%; display: flex; justify-content: center; overflow: hidden;">
@@ -225,11 +223,11 @@
     <!-- Activity Log Panel -->
     <div id="activity-log" class="activity-log glass-panel">
       <div class="log-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 4px;">
-        <h3 style="margin: 0; font-family: var(--font-title); font-size: 15px; color: var(--primary); opacity: 0.9;">🐾 실시간 로그</h3>
+        <h3 style="margin: 0; font-family: var(--font-title); font-size: 15px; color: var(--primary); opacity: 0.9;" data-i18n="realtime_log_header">🐾 실시간 로그</h3>
         <button id="expand-log-btn" style="background: none; border: none; cursor: pointer; font-size: 14px; opacity: 0.7; padding: 2px 6px; display: flex; align-items: center;" title="로그 창 키우기/줄이기">↕️</button>
       </div>
       <div id="log-content" class="log-content">
-        <div class="log-entry">온라인 고양이 안식처에 오신 것을 환영합니다!</div>
+        <div class="log-entry" data-i18n="realtime_log_welcome">온라인 고양이 안식처에 오신 것을 환영합니다!</div>
       </div>
     </div>
 
@@ -239,52 +237,52 @@
         <span class="toy-icon">🔦</span>
         <span class="toy-name">레이저</span>
       </div>
-      <div class="toy-item" id="toy-yarn" draggable="true" title="털실 뭉치: 드래그해서 바닥에 놓아보세요.">
+      <div class="toy-item" id="toy-yarn" draggable="true" data-i18n-title="toy_yarn_desc" title="털실 뭉치: 던져서 고양이가 쫓아가 노는 장난감입니다.">
         <span class="toy-icon">🧶</span>
-        <span class="toy-name">털실뭉치</span>
+        <span class="toy-name" data-i18n="toy_yarn">털실뭉치</span>
       </div>
-      <div class="toy-item" id="toy-box-item" draggable="true" title="상자: 드래그해서 바닥에 놓으면 고양이가 들어가서 낮잠을 잡니다.">
+      <div class="toy-item" id="toy-box-item" draggable="true" data-i18n-title="toy_box_desc" title="골판지 상자: 바닥에 놓으면 고양이가 들어가 쉴 수 있습니다.">
         <span class="toy-icon">📦</span>
-        <span class="toy-name">골판지상자</span>
+        <span class="toy-name" data-i18n="toy_box">골판지상자</span>
       </div>
-      <div class="toy-item" id="toy-treat" draggable="true" title="생선 과자: 맛있는 간식을 드래그해서 먹이세요.">
+      <div class="toy-item" id="toy-treat" draggable="true" data-i18n-title="toy_treat_desc" title="물고기 간식: 바닥에 놓아 고양이에게 먹이는 과자입니다.">
         <span class="toy-icon">🐟</span>
-        <span class="toy-name">물고기간식</span>
+        <span class="toy-name" data-i18n="toy_treat">물고기간식</span>
       </div>
-      <div class="toy-item" id="toy-clear-all" title="장난감 청소: 클릭 활성화 후 바닥의 장난감을 개별 클릭하여 치웁니다. (더블 클릭 시 전체 청소)">
+      <div class="toy-item" id="toy-clear-all" data-i18n-title="toy_clear_desc" title="장난감 청소: 활성화 후 장난감을 클릭해 치웁니다. (더블 클릭 시 전체 청소)">
         <span class="toy-icon">🧹</span>
-        <span class="toy-name">장난감청소</span>
+        <span class="toy-name" data-i18n="toy_clear">장난감청소</span>
       </div>
     </div>
 
     <!-- Login Modal -->
     <div id="login-modal" class="login-panel glass-panel hidden">
       <div class="card-header" style="margin-bottom: 12px;">
-        <h3>🔑 로그인 및 회원가입</h3>
+        <h3 data-i18n="login_header">🔑 로그인 및 회원가입</h3>
         <button id="close-login-btn" class="close-card-btn">✕</button>
       </div>
-      <p style="font-size:12.5px; opacity:0.8; margin-top:-10px; margin-bottom:15px; text-align:center; line-height: 1.4;">
+      <p style="font-size:12.5px; opacity:0.8; margin-top:-10px; margin-bottom:15px; text-align:center; line-height: 1.4;" data-i18n="login_sub">
         계정을 등록하거나 로그인하면 내 고양이가 저장되어 언제 접속해도 만날 수 있어요.
       </p>
 
       <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
-        <label for="login-email">이메일 주소</label>
+        <label for="login-email" data-i18n="login_email">이메일 주소</label>
         <input type="email" id="login-email" placeholder="example@email.com">
       </div>
 
       <div class="form-group" style="margin-bottom: 15px; display: flex; flex-direction: column; gap: 6px;">
-        <label for="login-password">비밀번호</label>
-        <input type="password" id="login-password" placeholder="6자리 이상 비밀번호">
+        <label for="login-password" data-i18n="login_password">비밀번호</label>
+        <input type="password" id="login-password" data-i18n-placeholder="login_password_placeholder" placeholder="6자리 이상 비밀번호">
       </div>
 
       <div class="login-actions" style="display:flex; flex-direction:column; gap:8px;">
-        <button id="email-login-btn" class="primary-btn" style="background:var(--primary); margin:0;">이메일 로그인</button>
-        <button id="email-signup-btn" class="primary-btn" style="background:#54a0ff; margin:0;">이메일 회원가입</button>
+        <button id="email-login-btn" class="primary-btn" style="background:var(--primary); margin:0;" data-i18n="login_btn">이메일 로그인</button>
+        <button id="email-signup-btn" class="primary-btn" style="background:#54a0ff; margin:0;" data-i18n="signup_btn">이메일 회원가입</button>
         <div style="display:flex; align-items:center; margin: 4px 0;">
-          <hr style="flex:1; border:0; border-top:1px solid rgba(0,0,0,0.15);"><span style="font-size:11px; opacity:0.6; padding:0 8px;">또는</span><hr style="flex:1; border:0; border-top:1px solid rgba(0,0,0,0.15);">
+          <hr style="flex:1; border:0; border-top:1px solid rgba(0,0,0,0.15);"><span style="font-size:11px; opacity:0.6; padding:0 8px;" data-i18n="or">또는</span><hr style="flex:1; border:0; border-top:1px solid rgba(0,0,0,0.15);">
         </div>
         <button id="google-login-btn" class="primary-btn" style="background:#ffffff; color:#000000; border:1px solid #ddd; margin:0; display:flex; align-items:center; justify-content:center; gap:8px;">
-          <span style="font-size:14px;">🌐</span> 구글 계정으로 로그인
+          <span style="font-size:14px;">🌐</span> <span data-i18n="google_login">구글 계정으로 로그인</span>
         </button>
       </div>
     </div>
@@ -292,10 +290,10 @@
     <!-- Photo Modal -->
     <div id="photo-modal" class="photo-panel glass-panel hidden">
       <div class="card-header" style="margin-bottom: 12px;">
-        <h3>📷 찰칵! 고양이 사진첩</h3>
+        <h3 data-i18n="photo_header">📷 찰칵! 고양이 사진첩</h3>
         <button id="close-photo-btn" class="close-card-btn">✕</button>
       </div>
-      <p style="font-size:12.5px; opacity:0.8; margin-top:-10px; margin-bottom:15px; text-align:center; line-height: 1.4;">
+      <p style="font-size:12.5px; opacity:0.8; margin-top:-10px; margin-bottom:15px; text-align:center; line-height: 1.4;" data-i18n="photo_sub">
         방금 촬영된 고양이 사진입니다. 이미지를 저장하거나 소장해 보세요!
       </p>
       <div class="photo-preview-container" style="width:100%; border-radius:12px; overflow:hidden; border:1px solid var(--border-glass); margin-bottom:15px; background:rgba(0,0,0,0.05); display:flex; justify-content:center; align-items:center;">
