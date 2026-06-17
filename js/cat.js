@@ -343,20 +343,27 @@ export class Cat {
           this.vx = this.direction * playRunSpeed;
           this.x += this.vx;
         } else {
-          // Play with the yarn (kick/bat it)
-          this.vx = 0;
-          this.targetToy.vx = this.direction * (4 + Math.random() * 4);
-          this.targetToy.vy = -2 - Math.random() * 3;
-          this.energy = Math.max(10, this.energy - 8);
-          this.affection = Math.min(100, this.affection + 5);
+          // Play with the yarn (kick/bat it) - only if it is low enough to reach
+          const distToYarnY = Math.abs(this.y - this.targetToy.y);
+          if (distToYarnY < 65) {
+            this.vx = 0;
+            this.targetToy.vx = this.direction * (4 + Math.random() * 4);
+            this.targetToy.vy = -2 - Math.random() * 3;
+            this.energy = Math.max(10, this.energy - 8);
+            this.affection = Math.min(100, this.affection + 5);
 
-          if (Math.random() < 0.3) {
-            playMeow('kitten');
+            if (Math.random() < 0.3) {
+              playMeow('kitten');
+            }
+
+            this.state = 'idle';
+            this.stateTimer = 1.5 + Math.random() * 2;
+            this.targetToy = null;
+          } else {
+            // Wait under the ball for it to fall down
+            this.vx = 0;
+            this.stateTimer = 0.2; // Check again very soon
           }
-
-          this.state = 'idle';
-          this.stateTimer = 1.5 + Math.random() * 2;
-          this.targetToy = null;
         }
         break;
     }
