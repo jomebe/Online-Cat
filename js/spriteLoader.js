@@ -229,10 +229,10 @@ function trimCellNoise(ctx, rx, ry, rw, rh) {
     return true;
   };
 
-  // 1. Scan from left edge inward (up to 30% of width)
+  // 1. Scan from left edge inward (up to 8% of width, max 8px)
   let leftCut = 0;
   let hasSeenPixelsLeft = false;
-  const maxScanW = Math.floor(rw * 0.3);
+  const maxScanW = Math.min(8, Math.floor(rw * 0.08));
   for (let x = 0; x < maxScanW; x++) {
     const empty = isColEmpty(x);
     if (!empty) {
@@ -249,10 +249,10 @@ function trimCellNoise(ctx, rx, ry, rw, rh) {
     }
   }
 
-  // 2. Scan from right edge inward (up to 30% of width)
+  // 2. Scan from right edge inward (up to 8% of width, max 8px)
   let rightCut = rw - 1;
   let hasSeenPixelsRight = false;
-  const minScanW = Math.ceil(rw * 0.7);
+  const minScanW = rw - maxScanW;
   for (let x = rw - 1; x >= minScanW; x--) {
     const empty = isColEmpty(x);
     if (!empty) {
@@ -269,10 +269,10 @@ function trimCellNoise(ctx, rx, ry, rw, rh) {
     }
   }
 
-  // 3. Scan from top edge inward (up to 25% of height)
+  // 3. Scan from top edge inward (up to 8% of height, max 8px)
   let topCut = 0;
   let hasSeenPixelsTop = false;
-  const maxScanH = Math.floor(rh * 0.25);
+  const maxScanH = Math.min(8, Math.floor(rh * 0.08));
   for (let y = 0; y < maxScanH; y++) {
     const empty = isRowEmpty(y);
     if (!empty) {
@@ -289,10 +289,10 @@ function trimCellNoise(ctx, rx, ry, rw, rh) {
     }
   }
 
-  // 4. Scan from bottom edge inward (up to 25% of height)
+  // 4. Scan from bottom edge inward (up to 8% of height, max 8px)
   let bottomCut = rh - 1;
   let hasSeenPixelsBottom = false;
-  const minScanH = Math.ceil(rh * 0.75);
+  const minScanH = rh - maxScanH;
   for (let y = rh - 1; y >= minScanH; y--) {
     const empty = isRowEmpty(y);
     if (!empty) {
