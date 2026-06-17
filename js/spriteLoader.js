@@ -208,105 +208,42 @@ function findBounds(ctx, rx, ry, rw, rh) {
   return { x: rx + minX, y: ry + minY, w: maxX - minX + 1, h: maxY - minY + 1 };
 }
 
-/** Trim edge bleed-in pixels from neighboring cells */
-function trimCellNoise(ctx, rx, ry, rw, rh) {
+/** Trim edge bleed-in pixels from neighboring cells by clearing a 2px margin on internal borders */
+function trimCellNoise(ctx, rx, ry, rw, rh, imageWidth, imageHeight) {
   const imgData = ctx.getImageData(rx, ry, rw, rh);
   const data = imgData.data;
 
-  // Helper: check if a column has no active pixels
-  const isColEmpty = (x) => {
+  const clearCol = (x) => {
     for (let y = 0; y < rh; y++) {
-      if (data[(y * rw + x) * 4 + 3] > 15) return false;
+      data[(y * rw + x) * 4 + 3] = 0;
     }
-    return true;
   };
 
-  // Helper: check if a row has no active pixels
-  const isRowEmpty = (y) => {
+  const clearRow = (y) => {
     for (let x = 0; x < rw; x++) {
-      if (data[(y * rw + x) * 4 + 3] > 15) return false;
+      data[(y * rw + x) * 4 + 3] = 0;
     }
-    return true;
   };
 
-  // 1. Scan from left edge inward (up to 8% of width, max 8px)
-  let leftCut = 0;
-  let hasSeenPixelsLeft = false;
-  const maxScanW = Math.min(8, Math.floor(rw * 0.08));
-  for (let x = 0; x < maxScanW; x++) {
-    const empty = isColEmpty(x);
-    if (!empty) {
-      hasSeenPixelsLeft = true;
-    } else if (empty && hasSeenPixelsLeft) {
-      leftCut = x;
-    }
+  // If there is a neighbor to the left (rx > 0), clear left-most 2px
+  if (rx > 0) {
+    clearCol(0);
+    clearCol(1);
   }
-  if (leftCut > 0) {
-    for (let x = 0; x < leftCut; x++) {
-      for (let y = 0; y < rh; y++) {
-        data[(y * rw + x) * 4 + 3] = 0;
-      }
-    }
+  // If there is a neighbor to the right (rx + rw < imageWidth), clear right-most 2px
+  if (rx + rw < imageWidth) {
+    clearCol(rw - 1);
+    clearCol(rw - 2);
   }
-
-  // 2. Scan from right edge inward (up to 8% of width, max 8px)
-  let rightCut = rw - 1;
-  let hasSeenPixelsRight = false;
-  const minScanW = rw - maxScanW;
-  for (let x = rw - 1; x >= minScanW; x--) {
-    const empty = isColEmpty(x);
-    if (!empty) {
-      hasSeenPixelsRight = true;
-    } else if (empty && hasSeenPixelsRight) {
-      rightCut = x;
-    }
+  // If there is a neighbor above (ry > 0), clear top-most 2px
+  if (ry > 0) {
+    clearRow(0);
+    clearRow(1);
   }
-  if (rightCut < rw - 1) {
-    for (let x = rightCut + 1; x < rw; x++) {
-      for (let y = 0; y < rh; y++) {
-        data[(y * rw + x) * 4 + 3] = 0;
-      }
-    }
-  }
-
-  // 3. Scan from top edge inward (up to 8% of height, max 8px)
-  let topCut = 0;
-  let hasSeenPixelsTop = false;
-  const maxScanH = Math.min(8, Math.floor(rh * 0.08));
-  for (let y = 0; y < maxScanH; y++) {
-    const empty = isRowEmpty(y);
-    if (!empty) {
-      hasSeenPixelsTop = true;
-    } else if (empty && hasSeenPixelsTop) {
-      topCut = y;
-    }
-  }
-  if (topCut > 0) {
-    for (let y = 0; y < topCut; y++) {
-      for (let x = 0; x < rw; x++) {
-        data[(y * rw + x) * 4 + 3] = 0;
-      }
-    }
-  }
-
-  // 4. Scan from bottom edge inward (up to 8% of height, max 8px)
-  let bottomCut = rh - 1;
-  let hasSeenPixelsBottom = false;
-  const minScanH = rh - maxScanH;
-  for (let y = rh - 1; y >= minScanH; y--) {
-    const empty = isRowEmpty(y);
-    if (!empty) {
-      hasSeenPixelsBottom = true;
-    } else if (empty && hasSeenPixelsBottom) {
-      bottomCut = y;
-    }
-  }
-  if (bottomCut < rh - 1) {
-    for (let y = bottomCut + 1; y < rh; y++) {
-      for (let x = 0; x < rw; x++) {
-        data[(y * rw + x) * 4 + 3] = 0;
-      }
-    }
+  // If there is a neighbor below (ry + rh < imageHeight), clear bottom-most 2px
+  if (ry + rh < imageHeight) {
+    clearRow(rh - 1);
+    clearRow(rh - 2);
   }
 
   ctx.putImageData(imgData, rx, ry);
@@ -320,13 +257,17 @@ function extractFrame(processed, rx, ry, rw, rh) {
   rh = Math.round(rh);
 
   const ctx = processed.getContext('2d');
-  trimCellNoise(ctx, rx, ry, rw, rh);
+  trimCellNoise(ctx, rx, ry, rw, rh, processed.width, processed.height);
   const b = findBounds(ctx, rx, ry, rw, rh);
   const pad = 2;
-  const sx = Math.max(0, b.x - pad);
-  const sy = Math.max(0, b.y - pad);
-  const sw = Math.min(processed.width - sx, b.w + pad * 2);
-  const sh = Math.min(processed.height - sy, b.h + pad * 2);
+  
+  // Crop sides tightly within the cell boundaries
+  const sx = Math.max(rx, b.x - pad);
+  const sw = Math.min(rx + rw - sx, b.w + pad * 2);
+  
+  // Crop top tightly, but keep bottom aligned with bottom of the cell to preserve baseline
+  const sy = Math.max(ry, b.y - pad);
+  const sh = (ry + rh) - sy;
 
   const fc = document.createElement('canvas');
   fc.width = sw; fc.height = sh;
