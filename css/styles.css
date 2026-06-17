@@ -873,7 +873,7 @@ canvas, button, .toy-item, .cat-details-card, .sidebar, .settings-panel {
     gap: 8px;
   }
   
-  .settings-panel {
+  .settings-panel, .login-panel, #ad-modal {
     top: 68px;
     width: calc(100% - 20px);
     max-width: 360px;
@@ -1246,7 +1246,7 @@ canvas, button, .toy-item, .cat-details-card, .sidebar, .settings-panel {
     gap: 8px !important;
   }
   
-  .settings-panel {
+  .settings-panel, .login-panel, #ad-modal {
     top: 60px !important;
     max-height: calc(100vh - 80px) !important;
     width: 280px !important;

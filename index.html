@@ -312,6 +312,27 @@
       </div>
     </div>
 
+    <!-- Ad Modal -->
+    <div id="ad-modal" class="login-panel glass-panel hidden" style="z-index: 100;">
+      <div class="card-header" style="margin-bottom: 12px;">
+        <h3 id="ad-title-text" data-i18n="ad_modal_title">📺 광고 시청 중</h3>
+        <button id="close-ad-btn" class="close-card-btn" style="display: none;">✕</button>
+      </div>
+      <p id="ad-status-text" style="font-size:12.5px; opacity:0.8; margin-top:-10px; margin-bottom:15px; text-align:center; line-height: 1.4;" data-i18n="ad_modal_status">
+        광고가 완료될 때까지 잠시만 기다려주세요...
+      </p>
+      <div class="ad-video-container" style="width:100%; height:180px; border-radius:12px; overflow:hidden; border:1px solid var(--border-glass); margin-bottom:15px; background:#1e1e24; display:flex; flex-direction:column; justify-content:center; align-items:center; position:relative;">
+        <span style="font-size:48px; animation: float 3s ease-in-out infinite;">🐈</span>
+        <div class="ad-progress-bar-bg" style="position:absolute; bottom:0; left:0; width:100%; height:6px; background:rgba(255,255,255,0.2);">
+          <div id="ad-progress-bar-fill" style="width:0%; height:100%; background:var(--primary); transition: width 0.1s linear;"></div>
+        </div>
+        <div id="ad-countdown-overlay" style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.6); color:white; padding:4px 8px; border-radius:12px; font-size:11px; font-weight:600;">5s</div>
+      </div>
+      <div class="ad-actions" style="display:flex; justify-content:center;">
+        <button id="ad-confirm-btn" class="primary-btn" style="width:100%; background:var(--primary); margin:0; display:none;">확인</button>
+      </div>
+    </div>
+
     <!-- 320x50 Banner Ad -->
     <div class="ad-container-320-50">
       <script>

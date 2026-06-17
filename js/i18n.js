@@ -132,6 +132,11 @@ export const translations = {
     // UI Dialogs
     alert_name_required: "고양이 이름을 지어주세요!",
     alert_sanctuary_full: "안식처가 꽉 찼습니다! (최대 6마리)\n일부 고양이를 입양 보낸 뒤 데려와 주세요.",
+    alert_slot_limit_reached: "더 이상 고양이를 입양할 공간이 없습니다 (최대 {limit}마리).\n광고를 5초간 시청하고 고양이 슬롯을 1칸 추가하시겠습니까?",
+    ad_modal_title: "📺 광고 시청 중",
+    ad_modal_status: "광고가 완료될 때까지 잠시만 기다려주세요...",
+    ad_complete: "🎉 광고 시청이 완료되어 고양이 슬롯이 1칸 추가되었습니다!",
+    log_slot_unlocked: "🔓 광고 시청으로 고양이 슬롯을 추가했습니다! (최대 {limit}마리)",
     alert_adopt_out_confirm: "{name}를 좋은 곳으로 입양 보낼까요?\n언제든 새로운 고양이를 다시 데려올 수 있어요.",
     prompt_rename: "새로운 이름을 지어주세요 (최대 8자):",
     alert_signup_success: "회원가입 및 로그인에 성공했습니다!",
@@ -288,6 +293,11 @@ export const translations = {
     // UI Dialogs
     alert_name_required: "Please give the cat a name!",
     alert_sanctuary_full: "The sanctuary is full! (Max 6 cats)\nPlease adopt some cats out first.",
+    alert_slot_limit_reached: "Not enough space to adopt more cats (max {limit}).\nWould you like to watch a 5-second ad to unlock 1 more slot?",
+    ad_modal_title: "📺 Watching Ad",
+    ad_modal_status: "Please wait until the ad is complete...",
+    ad_complete: "🎉 Ad watched successfully! 1 cat slot unlocked!",
+    log_slot_unlocked: "🔓 Unlocked a new cat slot by watching an ad! (Max {limit} cats)",
     alert_adopt_out_confirm: "Would you like to adopt out {name} to a good home?\nYou can always bring in new cats anytime.",
     prompt_rename: "Please enter a new name (Max 8 characters):",
     alert_signup_success: "Signed up and logged in successfully!",

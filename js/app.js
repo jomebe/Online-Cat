@@ -10,6 +10,7 @@ import { t, currentLang, applyTranslations, setLanguage } from './i18n.js';
 // Application State
 const state = {
   cats: [],
+  maxCatsLimit: 3,
   toys: [],
   laser: { x: 0, y: 0, active: false },
   broomActive: false, // broom clean-up tool state
@@ -87,6 +88,7 @@ function addInitialCats() {
   state.cats.forEach(cat => cat.y = state.floorY - 5);
   
   saveCatsToLocalStorage();
+  updateMaxCatsLimit();
 }
 
 // LocalStorage Persistence for Placed Toys
@@ -181,6 +183,7 @@ function loadCatsFromLocalStorage() {
           return cat;
         });
         addLog(t('log_cats_loaded_local', { count: state.cats.length }));
+        updateMaxCatsLimit();
         return true;
       }
     }
@@ -234,6 +237,7 @@ async function loadCatsFromDatabase() {
         return cat;
       });
       addLog(t('log_cats_loaded', { count: dbCats.length }));
+      updateMaxCatsLimit();
     } else {
       // Database is empty. Migrate local cats if any exist, or add default initial cats
       if (state.cats.length === 0) {
@@ -1124,6 +1128,68 @@ breedSelectorItems.forEach(item => {
   });
 });
 
+function updateMaxCatsLimit() {
+  const savedLimit = localStorage.getItem('online_cat_max_cats_limit');
+  let limit = savedLimit ? parseInt(savedLimit, 10) : 3;
+  if (isNaN(limit) || limit < 3) limit = 3;
+  state.maxCatsLimit = Math.max(limit, state.cats.length);
+  localStorage.setItem('online_cat_max_cats_limit', state.maxCatsLimit);
+}
+
+function watchAdToUnlockSlot() {
+  const adModal = document.getElementById('ad-modal');
+  const adProgressBar = document.getElementById('ad-progress-bar-fill');
+  const adCountdown = document.getElementById('ad-countdown-overlay');
+  const adStatusText = document.getElementById('ad-status-text');
+  const adConfirmBtn = document.getElementById('ad-confirm-btn');
+  const closeAdBtn = document.getElementById('close-ad-btn');
+  const adTitleText = document.getElementById('ad-title-text');
+  
+  adModal.classList.remove('hidden');
+  adProgressBar.style.transition = 'none';
+  adProgressBar.style.width = '0%';
+  adCountdown.textContent = '5s';
+  adStatusText.textContent = t('ad_modal_status');
+  adTitleText.textContent = t('ad_modal_title');
+  adConfirmBtn.style.display = 'none';
+  closeAdBtn.style.display = 'none';
+  
+  let duration = 5000;
+  let startTime = Date.now();
+  
+  // Force layout reflow
+  adProgressBar.offsetHeight;
+  
+  adProgressBar.style.transition = 'width 5s linear';
+  adProgressBar.style.width = '100%';
+  
+  const interval = setInterval(() => {
+    const elapsed = Date.now() - startTime;
+    const remaining = Math.max(0, Math.ceil((duration - elapsed) / 1000));
+    adCountdown.textContent = remaining + 's';
+    
+    if (elapsed >= duration) {
+      clearInterval(interval);
+      adCountdown.textContent = '0s';
+      adStatusText.textContent = t('ad_complete');
+      adConfirmBtn.style.display = 'block';
+      closeAdBtn.style.display = 'block';
+      
+      state.maxCatsLimit++;
+      localStorage.setItem('online_cat_max_cats_limit', state.maxCatsLimit);
+      addLog(t('log_slot_unlocked', { limit: state.maxCatsLimit }));
+    }
+  }, 100);
+  
+  const handleClose = () => {
+    adModal.classList.add('hidden');
+    adConfirmBtn.removeEventListener('click', handleClose);
+    closeAdBtn.removeEventListener('click', handleClose);
+  };
+  adConfirmBtn.addEventListener('click', handleClose);
+  closeAdBtn.addEventListener('click', handleClose);
+}
+
 // Add Cat button
 const createCatBtn = document.getElementById('create-cat-btn');
 const catNameInput = document.getElementById('cat-name-input');
@@ -1135,8 +1201,10 @@ createCatBtn.addEventListener('click', () => {
     return;
   }
   
-  if (state.cats.length >= 6) {
-    alert(t('alert_sanctuary_full'));
+  if (state.cats.length >= state.maxCatsLimit) {
+    if (confirm(t('alert_slot_limit_reached', { limit: state.maxCatsLimit }))) {
+      watchAdToUnlockSlot();
+    }
     return;
   }
 
