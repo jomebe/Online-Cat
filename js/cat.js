@@ -563,12 +563,16 @@ export class Cat {
     }
 
     // Sprite render dimensions
-    const baseRenderH = 100;
+    const baseRenderH = 70;
     const aspect = frame.width / frame.height;
     const baseRenderW = baseRenderH * aspect;
 
     const renderW = baseRenderW * this.scale * scaleXMod;
     const renderH = baseRenderH * this.scale * scaleYMod;
+
+    // Apply baseline offset to ensure feet touch the ground
+    const bottomOffset = frame.bottomOffset || 0;
+    const scaledOffset = bottomOffset * (renderH / frame.height);
 
     ctx.save();
     ctx.translate(this.x + shakeX, this.y + bodyYOffset);
@@ -576,7 +580,7 @@ export class Cat {
     ctx.scale(this.direction, 1); // flip based on direction
 
     const drawX = -renderW / 2;
-    const drawY = -renderH;
+    const drawY = -renderH - scaledOffset;
 
     // Hit state: red tint overlay
     if (this.hitTimer > 0) {
@@ -605,9 +609,33 @@ export class Cat {
   }
 
   // Draw Name tag, hearts, and stars overlay (drawn on top of all toys/boxes)
-  drawOverlay(ctx) {
-    // baseRenderH matches the 70px base used in draw()
-    const renderH = 100 * this.scale;
+    // Determine current frame to calculate accurate name height
+    let frameKey = 'idle';
+    let animFPS = 1.5;
+    if (this.state === 'walk') {
+      frameKey = 'walk'; animFPS = 6;
+    } else if (this.state === 'eat') {
+      frameKey = 'eat'; animFPS = 5;
+    } else if (this.state === 'sleep') {
+      frameKey = 'sleep'; animFPS = 0.8;
+    } else if (this.state === 'play') {
+      frameKey = 'play'; animFPS = 5;
+    } else if (this.state === 'pet' || this.isBeingPet) {
+      frameKey = 'pet'; animFPS = 3;
+    } else if (this.state === 'sit') {
+      frameKey = 'idle'; animFPS = 1.2;
+    }
+
+    const frames = this.spriteFrames ? this.spriteFrames[frameKey] : null;
+    const frameIndex = Math.floor(this.animTime * animFPS) % (frames ? frames.length : 1);
+    const frame = frames ? frames[frameIndex] : null;
+
+    const renderH = 70 * this.scale;
+    let offset = 0;
+    if (frame) {
+      const bottomOffset = frame.bottomOffset || 0;
+      offset = bottomOffset * (renderH / frame.height);
+    }
 
     // Draw Name text overlay (always in screen space, not flipped)
     ctx.save();
@@ -622,8 +650,8 @@ export class Cat {
     else if (this.state === 'eat') displayName = '🍲 ' + this.name;
     else if (this.state === 'play') displayName = '🎾 ' + this.name;
 
-    // this.y is the floor anchor; sprite top = this.y - renderH; name floats 6px above that
-    ctx.fillText(displayName, this.x, this.y - renderH - 6);
+    // this.y is the floor anchor; sprite top = this.y - renderH - offset; name floats 6px above that
+    ctx.fillText(displayName, this.x, this.y - renderH - offset - 6);
     ctx.restore();
 
     // Render rising hearts

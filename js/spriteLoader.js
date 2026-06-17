@@ -258,11 +258,21 @@ function extractFrame(processed, rx, ry, rw, rh) {
 
   const ctx = processed.getContext('2d');
   trimCellNoise(ctx, rx, ry, rw, rh, processed.width, processed.height);
+  const b = findBounds(ctx, rx, ry, rw, rh);
+  const pad = 2;
+  
+  // Crop sides and top tightly, staying within cell boundaries
+  const sx = Math.max(rx, b.x - pad);
+  const sy = Math.max(ry, b.y - pad);
+  const sw = Math.min(rx + rw - sx, b.w + pad * 2);
+  const sh = Math.min(ry + rh - sy, b.h + pad * 2);
 
   const fc = document.createElement('canvas');
-  fc.width = rw;
-  fc.height = rh;
-  fc.getContext('2d').drawImage(processed, rx, ry, rw, rh, 0, 0, rw, rh);
+  fc.width = sw; fc.height = sh;
+  fc.getContext('2d').drawImage(processed, sx, sy, sw, sh, 0, 0, sw, sh);
+  
+  // Attach vertical baseline offset (how many empty pixels were trimmed from the bottom of the cell)
+  fc.bottomOffset = (ry + rh) - (sy + sh);
   return fc;
 }
 
