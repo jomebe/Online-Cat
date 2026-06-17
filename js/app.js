@@ -1166,8 +1166,54 @@ async function watchAdToUnlockSlot() {
   const adConfirmBtn = document.getElementById('ad-confirm-btn');
   const closeAdBtn = document.getElementById('close-ad-btn');
   const adTitleText = document.getElementById('ad-title-text');
+  const adContainer = document.getElementById('modal-ad-banner-container');
   
   adModal.classList.remove('hidden');
+  
+  // Load real Adsterra ad dynamically inside the modal using an iframe sandbox
+  if (adContainer) {
+    adContainer.innerHTML = ''; // Clear fallback/previous ad
+    
+    // Create a blank iframe
+    const iframe = document.createElement('iframe');
+    iframe.style.width = '320px';
+    iframe.style.height = '50px';
+    iframe.style.border = 'none';
+    iframe.style.overflow = 'hidden';
+    iframe.scrolling = 'no';
+    
+    adContainer.appendChild(iframe);
+    
+    try {
+      // Access the iframe's document
+      const iDoc = iframe.contentDocument || iframe.contentWindow.document;
+      
+      // Inject the options script
+      const scriptOpt = iDoc.createElement('script');
+      scriptOpt.type = 'text/javascript';
+      scriptOpt.innerHTML = `
+        var atOptions = {
+          'key' : 'e30dea9166251d938f613190dc322b51',
+          'format' : 'iframe',
+          'height' : 50,
+          'width' : 320,
+          'params' : {}
+        };
+      `;
+      iDoc.head.appendChild(scriptOpt);
+      
+      // Inject the invocation script
+      const scriptAd = iDoc.createElement('script');
+      scriptAd.type = 'text/javascript';
+      scriptAd.src = 'https://www.highperformanceformat.com/e30dea9166251d938f613190dc322b51/invoke.js';
+      iDoc.head.appendChild(scriptAd);
+    } catch (e) {
+      console.error('Failed to inject ad script into iframe:', e);
+      // Fallback: put back the cat emoji
+      adContainer.innerHTML = '<span style="font-size:48px; animation: float 3s ease-in-out infinite;">🐈</span>';
+    }
+  }
+
   adProgressBar.style.transition = 'none';
   adProgressBar.style.width = '0%';
   adCountdown.textContent = '5s';
@@ -1205,6 +1251,11 @@ async function watchAdToUnlockSlot() {
   
   const handleClose = () => {
     adModal.classList.add('hidden');
+    // Restore fallback when closed
+    if (adContainer) {
+      adContainer.innerHTML = '<span style="font-size:48px; animation: float 3s ease-in-out infinite;">🐈</span>';
+    }
+    clearInterval(interval);
     adConfirmBtn.removeEventListener('click', handleClose);
     closeAdBtn.removeEventListener('click', handleClose);
   };
