@@ -91,14 +91,16 @@ export class Toy {
     ctx.translate(this.x, this.y);
 
     if (this.type === 'yarn') {
-      // Yarn ball (just a single pass drawing)
-      ctx.rotate(this.rotation);
-      
-      // Draw shadow
+      // Draw shadow on the floor (not affected by ball rotation)
+      ctx.save();
       ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
       ctx.beginPath();
       ctx.ellipse(0, this.radius - 2, this.radius * 0.8, 4, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
+
+      // Rotate canvas for the rolling yarn ball texture
+      ctx.rotate(this.rotation);
 
       // Draw ball
       ctx.fillStyle = this.color;
