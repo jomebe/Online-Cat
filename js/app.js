@@ -27,6 +27,7 @@ const state = {
   floorY: 0,
   user: null, // supabase authenticated user
   lastSyncTime: 0, // throttle timer for DB stats updates
+  lastToySyncTime: 0, // throttle timer for toy localStorage updates
   camera: {
     x: 0,
     y: 0,
@@ -75,6 +76,53 @@ function addInitialCats() {
   
   // Update state positions
   state.cats.forEach(cat => cat.y = state.floorY - 5);
+}
+
+// LocalStorage Persistence for Placed Toys
+function saveToysToLocalStorage() {
+  try {
+    const toysData = state.toys.map(toy => {
+      const data = {
+        type: toy.type,
+        x: toy.x,
+        y: toy.y,
+        vx: toy.vx,
+        vy: toy.vy
+      };
+      if (toy.type === 'yarn') {
+        data.color = toy.color;
+      } else if (toy.type === 'treat') {
+        data.bites = toy.bites;
+      }
+      return data;
+    });
+    localStorage.setItem('online_cat_toys', JSON.stringify(toysData));
+  } catch (err) {
+    console.warn('Failed to save toys to localStorage:', err);
+  }
+}
+
+function loadToysFromLocalStorage() {
+  try {
+    const savedToysJson = localStorage.getItem('online_cat_toys');
+    if (savedToysJson) {
+      const savedToysData = JSON.parse(savedToysJson);
+      if (Array.isArray(savedToysData)) {
+        state.toys = savedToysData.map(data => {
+          const toy = new Toy(data.type, data.x, data.y, { color: data.color });
+          if (data.bites !== undefined) {
+            toy.bites = data.bites;
+          }
+          if (data.vx !== undefined) toy.vx = data.vx;
+          if (data.vy !== undefined) toy.vy = data.vy;
+          return toy;
+        });
+        addLog(`📦 저장된 장난감 ${state.toys.length}개를 불러왔습니다.`);
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to load toys from localStorage:', err);
+  }
 }
 
 // Supabase Database Syncing Logic
@@ -284,6 +332,7 @@ function spawnToy(type, x, y) {
 
   addLog(`바닥에 ${koreanName}를 놓았습니다.`);
   playChime();
+  saveToysToLocalStorage();
 }
 
 // HTML5 Drag Drop support for spawning from inventory
@@ -314,6 +363,7 @@ function clearAllToys() {
   state.toys = [];
   addLog('🧹 방 안의 모든 장난감과 상자를 깨끗이 치웠습니다.');
   playChime();
+  saveToysToLocalStorage();
 }
 
 function removeIndividualToy(toy, index) {
@@ -344,6 +394,7 @@ function removeIndividualToy(toy, index) {
   
   addLog(`바닥에 놓인 ${koreanName}을(를) 치웠습니다.`);
   playChime();
+  saveToysToLocalStorage();
 }
 
 // HTML5 Drag Drop support for spawning from inventory
@@ -642,6 +693,7 @@ function handlePointerUp() {
   if (state.draggedToy) {
     state.draggedToy.isDragging = false;
     state.draggedToy = null;
+    saveToysToLocalStorage();
   }
   
   if (state.draggedCat) {
@@ -1271,6 +1323,13 @@ function loop(timestamp) {
     }
   }
 
+  // Periodic local storage save for toys (every 6 seconds)
+  if (!state.lastToySyncTime) state.lastToySyncTime = timestamp;
+  if (timestamp - state.lastToySyncTime > 6000) {
+    state.lastToySyncTime = timestamp;
+    saveToysToLocalStorage();
+  }
+
   requestAnimationFrame(loop);
 }
 
@@ -1488,6 +1547,7 @@ function setupAuthListener() {
 async function initGame() {
   // 1. Populate default cats instantly so room is alive immediately
   addInitialCats();
+  loadToysFromLocalStorage();
   requestAnimationFrame(loop);
 
   // 2. Initialize auth/db in parallel
