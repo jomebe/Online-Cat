@@ -1121,15 +1121,17 @@ function loop(timestamp) {
       if (speed > 8.0) { // flying fast enough (throw speed)
         state.cats.forEach(cat => {
           if (!cat.isDragging && !cat.observationMode && (!cat.hitTimer || cat.hitTimer <= 0)) {
-            const catW = cat.width * cat.scale;
-            const catH = cat.height * cat.scale;
+            // Use slightly smaller hitboxes for a more forgiving and natural feel (prevent grazing hits in the air)
+            const colW = cat.width * cat.scale * 0.8;
+            const colH = cat.height * cat.scale * 0.8;
+            const colRad = toy.radius * 0.7;
             
             // Check bounding box overlap
             const isOverlap = (
-              toy.x + toy.radius >= cat.x - catW / 2 &&
-              toy.x - toy.radius <= cat.x + catW / 2 &&
-              toy.y + toy.radius >= cat.y - catH &&
-              toy.y - toy.radius <= cat.y
+              toy.x + colRad >= cat.x - colW / 2 &&
+              toy.x - colRad <= cat.x + colW / 2 &&
+              toy.y + colRad >= cat.y - colH &&
+              toy.y - colRad <= cat.y
             );
             
             if (isOverlap) {
