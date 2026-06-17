@@ -609,6 +609,7 @@ export class Cat {
   }
 
   // Draw Name tag, hearts, and stars overlay (drawn on top of all toys/boxes)
+  drawOverlay(ctx) {
     // Determine current frame to calculate accurate name height
     let frameKey = 'idle';
     let animFPS = 1.5;
