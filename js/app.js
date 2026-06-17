@@ -669,7 +669,16 @@ canvas.addEventListener('touchmove', handlePointerMove, { passive: false });
 window.addEventListener('touchend', handlePointerUp);
 
 // Double-click to track a cat, remove a toy, or stop tracking
+let lastFocusTime = 0;
+window.addEventListener('focus', () => {
+  lastFocusTime = Date.now();
+});
+
 canvas.addEventListener('dblclick', (e) => {
+  // Ignore double clicks that happen immediately after window focus (refocus click noise)
+  if (Date.now() - lastFocusTime < 500) {
+    return;
+  }
   const pos = getMousePos(e);
   const mx = pos.x;
   const my = pos.y;
