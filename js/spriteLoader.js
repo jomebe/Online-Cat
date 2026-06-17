@@ -303,45 +303,75 @@ function findBounds(ctx, rx, ry, rw, rh) {
   return { x: rx + minX, y: ry + minY, w: maxX - minX + 1, h: maxY - minY + 1 };
 }
 
-/** Trim edge bleed-in pixels from neighboring cells by clearing a 2px margin on internal borders */
-function trimCellNoise(ctx, rx, ry, rw, rh, imageWidth, imageHeight) {
+/** Find and keep only the largest connected component of visible pixels in the region, erasing neighbor noise */
+function keepLargestComponent(ctx, rx, ry, rw, rh) {
   const imgData = ctx.getImageData(rx, ry, rw, rh);
   const data = imgData.data;
+  const w = rw;
+  const h = rh;
+  const total = w * h;
+  const visited = new Uint8Array(total);
+  
+  const components = [];
+  const isVisible = (idx) => data[idx * 4 + 3] > 20;
 
-  const clearCol = (x) => {
-    for (let y = 0; y < rh; y++) {
-      data[(y * rw + x) * 4 + 3] = 0;
+  for (let i = 0; i < total; i++) {
+    if (isVisible(i) && !visited[i]) {
+      const component = [];
+      const queue = [i];
+      visited[i] = 1;
+      let head = 0;
+      
+      while (head < queue.length) {
+        const pos = queue[head++];
+        component.push(pos);
+        
+        const px = pos % w;
+        const py = Math.floor(pos / w);
+        
+        if (px > 0) {
+          const n = pos - 1;
+          if (!visited[n] && isVisible(n)) { visited[n] = 1; queue.push(n); }
+        }
+        if (px < w - 1) {
+          const n = pos + 1;
+          if (!visited[n] && isVisible(n)) { visited[n] = 1; queue.push(n); }
+        }
+        if (py > 0) {
+          const n = pos - w;
+          if (!visited[n] && isVisible(n)) { visited[n] = 1; queue.push(n); }
+        }
+        if (py < h - 1) {
+          const n = pos + w;
+          if (!visited[n] && isVisible(n)) { visited[n] = 1; queue.push(n); }
+        }
+      }
+      components.push(component);
     }
-  };
-
-  const clearRow = (y) => {
-    for (let x = 0; x < rw; x++) {
-      data[(y * rw + x) * 4 + 3] = 0;
+  }
+  
+  if (components.length > 1) {
+    let largestIdx = 0;
+    let maxLen = 0;
+    for (let c = 0; c < components.length; c++) {
+      if (components[c].length > maxLen) {
+        maxLen = components[c].length;
+        largestIdx = c;
+      }
     }
-  };
-
-  // If there is a neighbor to the left (rx > 0), clear left-most 2px
-  if (rx > 0) {
-    clearCol(0);
-    clearCol(1);
+    
+    for (let c = 0; c < components.length; c++) {
+      if (c !== largestIdx) {
+        const comp = components[c];
+        for (let p = 0; p < comp.length; p++) {
+          const idx = comp[p] * 4;
+          data[idx + 3] = 0;
+        }
+      }
+    }
+    
+    ctx.putImageData(imgData, rx, ry);
   }
-  // If there is a neighbor to the right (rx + rw < imageWidth), clear right-most 2px
-  if (rx + rw < imageWidth) {
-    clearCol(rw - 1);
-    clearCol(rw - 2);
-  }
-  // If there is a neighbor above (ry > 0), clear top-most 2px
-  if (ry > 0) {
-    clearRow(0);
-    clearRow(1);
-  }
-  // If there is a neighbor below (ry + rh < imageHeight), clear bottom-most 2px
-  if (ry + rh < imageHeight) {
-    clearRow(rh - 1);
-    clearRow(rh - 2);
-  }
-
-  ctx.putImageData(imgData, rx, ry);
 }
 
 /** Extract a single cropped frame from a processed canvas */
@@ -352,7 +382,7 @@ function extractFrame(processed, rx, ry, rw, rh) {
   rh = Math.round(rh);
 
   const ctx = processed.getContext('2d');
-  trimCellNoise(ctx, rx, ry, rw, rh, processed.width, processed.height);
+  keepLargestComponent(ctx, rx, ry, rw, rh);
   const b = findBounds(ctx, rx, ry, rw, rh);
   const pad = 2;
   
@@ -502,6 +532,10 @@ async function processBreed(breedKey) {
   const idleFrame = baseFrames[0];
   const scaleFactor = idleFrame ? (70 / idleFrame.height) : 0.22;
 
+  // Calculate a separate petScaleFactor for pet animation frames (some pet sheets are drawn larger)
+  const petFrame = petFrames && petFrames[0];
+  const petScaleFactor = petFrame ? (70 / petFrame.height) : scaleFactor;
+
   const result = {
     idle: idleFrames,
     walk: walkFrames,
@@ -510,6 +544,7 @@ async function processBreed(breedKey) {
     pet: petFrames,
     eat: walkFrames, // eating uses walk animation
     scaleFactor: scaleFactor,
+    petScaleFactor: petScaleFactor,
   };
 
   spriteCache[breedKey] = result;

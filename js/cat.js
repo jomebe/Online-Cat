@@ -563,7 +563,10 @@ export class Cat {
     }
 
     // Sprite render dimensions using breed's stable scaleFactor
-    const scaleFactor = (this.spriteFrames && this.spriteFrames.scaleFactor) || (70 / frame.height);
+    let scaleFactor = (this.spriteFrames && this.spriteFrames.scaleFactor) || (70 / frame.height);
+    if (frameKey === 'pet' && this.spriteFrames && this.spriteFrames.petScaleFactor) {
+      scaleFactor = this.spriteFrames.petScaleFactor;
+    }
     const renderW = frame.width * scaleFactor * this.scale * scaleXMod;
     const renderH = frame.height * scaleFactor * this.scale * scaleYMod;
 
