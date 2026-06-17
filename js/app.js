@@ -5,7 +5,7 @@ import { Cat } from './cat.js';
 import { Toy, drawLaserDot } from './toy.js';
 import { loadAllSprites } from './spriteLoader.js';
 import { supabase, initSupabaseClient, getSupabaseAnonKey, setSupabaseAnonKey } from './supabase.js';
-import { t, currentLang, applyTranslations } from './i18n.js';
+import { t, currentLang, applyTranslations, setLanguage } from './i18n.js';
 
 // Application State
 const state = {
@@ -1277,6 +1277,54 @@ volumeSlider.addEventListener('input', (e) => {
   setAmbientVolume(vol);
 });
 
+// Language Toggle Buttons
+const langBtns = document.querySelectorAll('#lang-btns button');
+langBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    langBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    
+    const langVal = btn.dataset.lang;
+    setLanguage(langVal);
+    
+    // Update active HUDs and buttons dynamically in app.js
+    if (state.camera.targetCat) {
+      cameraHudText.innerHTML = t('tracking_hud', { name: state.camera.targetCat.name });
+    }
+    
+    const observedCat = state.cats.find(c => c.observationMode);
+    if (observedCat) {
+      document.getElementById('obs-cat-name').textContent = observedCat.name;
+      const breedText = t('breed_' + observedCat.breed);
+      const genderText = observedCat.gender === 'male' ? t('cat_gender_male') : t('cat_gender_female');
+      document.getElementById('obs-cat-details').textContent = `${t('cat_breed')}: ${breedText} · ${t('cat_gender')}: ${genderText}`;
+    }
+    
+    if (state.user) {
+      authBtn.textContent = t('logout');
+      authBtn.title = t('logged_in_as', { email: state.user.email });
+    } else {
+      authBtn.textContent = t('login');
+      authBtn.title = t('login');
+    }
+    
+    muteBtn.textContent = state.isMuted ? '🔇' : '🔊';
+    
+    playChime();
+  });
+});
+
+// Synchronize language buttons initially
+function syncLanguageSelector() {
+  langBtns.forEach(btn => {
+    if (btn.dataset.lang === currentLang) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+}
+
 // Main Animation Loop
 function loop(timestamp) {
   if (!state.lastTime) state.lastTime = timestamp;
@@ -1720,6 +1768,9 @@ async function initGame() {
 
   // Apply translations to static HTML elements
   applyTranslations();
+
+  // Synchronize language selector buttons state
+  syncLanguageSelector();
 
   // Update SEO title and description dynamically
   document.title = t('app_title_seo');

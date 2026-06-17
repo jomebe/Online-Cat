@@ -1,6 +1,6 @@
 // js/i18n.js
 
-export const currentLang = navigator.language.startsWith('ko') ? 'ko' : 'en';
+export let currentLang = localStorage.getItem('online_cat_lang') || (navigator.language.startsWith('ko') ? 'ko' : 'en');
 
 export const translations = {
   ko: {
@@ -29,6 +29,7 @@ export const translations = {
     weather_sakura: "벚꽃",
     weather_rain: "비/천둥",
     settings_sound: "효과음 볼륨",
+    settings_lang: "언어 설정 (Language)",
     cat_details_header: "🏷️ 고양이 정보",
     cat_gender_male: "수컷 ♂",
     cat_gender_female: "암컷 ♀",
@@ -182,6 +183,7 @@ export const translations = {
     weather_sakura: "Sakura",
     weather_rain: "Rain/Storm",
     settings_sound: "Sound Volume",
+    settings_lang: "Language Settings",
     cat_details_header: "🏷️ Cat Profile",
     cat_gender_male: "Male ♂",
     cat_gender_female: "Female ♀",
@@ -341,4 +343,22 @@ export function applyTranslations() {
     const key = el.dataset.i18nTitle;
     el.title = t(key);
   });
+}
+
+export function setLanguage(lang) {
+  currentLang = lang;
+  localStorage.setItem('online_cat_lang', lang);
+  
+  // Set HTML language attribute
+  document.documentElement.lang = currentLang;
+  
+  // Re-apply translations to all elements
+  applyTranslations();
+  
+  // Update document title and description
+  document.title = t('app_title_seo');
+  const descMeta = document.querySelector('meta[name="description"]');
+  if (descMeta) {
+    descMeta.setAttribute('content', t('app_desc_seo'));
+  }
 }
