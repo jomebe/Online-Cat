@@ -1133,3 +1133,36 @@ body.ui-hidden #toy-box {
   border-color: rgba(255,255,255,0.08);
   color: var(--text-light);
 }
+
+/* Ad Placements Styling */
+.ad-container-320-50 {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9;
+  width: 320px;
+  height: 50px;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: opacity 0.3s ease;
+}
+
+/* Hide ads in cinematic view or close-up observation mode to keep the view clean */
+body.ui-hidden .ad-container-320-50,
+body.ui-hidden .sidebar-ad-container,
+body.observation-active .ad-container-320-50,
+body.observation-active .sidebar-ad-container {
+  display: none !important;
+  opacity: 0 !important;
+}
+
+@media (max-width: 768px) {
+  .ad-container-320-50 {
+    top: 72px;
+    bottom: auto;
+  }
+}
