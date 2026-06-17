@@ -258,20 +258,11 @@ function extractFrame(processed, rx, ry, rw, rh) {
 
   const ctx = processed.getContext('2d');
   trimCellNoise(ctx, rx, ry, rw, rh, processed.width, processed.height);
-  const b = findBounds(ctx, rx, ry, rw, rh);
-  const pad = 2;
-  
-  // Crop sides tightly within the cell boundaries
-  const sx = Math.max(rx, b.x - pad);
-  const sw = Math.min(rx + rw - sx, b.w + pad * 2);
-  
-  // Crop top tightly, but keep bottom aligned with bottom of the cell to preserve baseline
-  const sy = Math.max(ry, b.y - pad);
-  const sh = (ry + rh) - sy;
 
   const fc = document.createElement('canvas');
-  fc.width = sw; fc.height = sh;
-  fc.getContext('2d').drawImage(processed, sx, sy, sw, sh, 0, 0, sw, sh);
+  fc.width = rw;
+  fc.height = rh;
+  fc.getContext('2d').drawImage(processed, rx, ry, rw, rh, 0, 0, rw, rh);
   return fc;
 }
 

@@ -563,7 +563,7 @@ export class Cat {
     }
 
     // Sprite render dimensions
-    const baseRenderH = 70;
+    const baseRenderH = 100;
     const aspect = frame.width / frame.height;
     const baseRenderW = baseRenderH * aspect;
 
@@ -607,7 +607,7 @@ export class Cat {
   // Draw Name tag, hearts, and stars overlay (drawn on top of all toys/boxes)
   drawOverlay(ctx) {
     // baseRenderH matches the 70px base used in draw()
-    const renderH = 70 * this.scale;
+    const renderH = 100 * this.scale;
 
     // Draw Name text overlay (always in screen space, not flipped)
     ctx.save();
