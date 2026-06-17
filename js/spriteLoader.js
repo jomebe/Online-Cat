@@ -53,6 +53,7 @@ const PET_LAYOUT = {
 // breed → { idle: [Canvas], walk: [Canvas,...], sleep: [Canvas], play: [Canvas], pet: [Canvas,...] }
 const spriteCache = {};
 const loadingBreeds = {};
+const failedBreeds = {};
 
 // ────────────────────────────────────────────
 // Image loading
@@ -76,7 +77,7 @@ function tryLoadImage(src) {
 }
 
 // ────────────────────────────────────────────
-// Background removal via edge flood-fill (Asynchronous using Web Worker)
+// Background removal via edge flood-fill (Asynchronous using Web Worker with Sync Fallback)
 // Only removes white pixels connected to image edges,
 // preserving white cat fur inside the outline.
 // ────────────────────────────────────────────
@@ -172,17 +173,111 @@ function removeWhiteBackgroundAsync(image) {
       };
     `;
 
-    const blob = new Blob([workerCode], { type: 'application/javascript' });
-    const worker = new Worker(URL.createObjectURL(blob));
+    try {
+      const blob = new Blob([workerCode], { type: 'application/javascript' });
+      const workerUrl = URL.createObjectURL(blob);
+      const worker = new Worker(workerUrl);
 
-    worker.onmessage = (e) => {
-      ctx.putImageData(e.data.imageData, 0, 0);
-      worker.terminate();
+      worker.onmessage = (e) => {
+        ctx.putImageData(e.data.imageData, 0, 0);
+        worker.terminate();
+        URL.revokeObjectURL(workerUrl);
+        resolve(canvas);
+      };
+
+      worker.onerror = (err) => {
+        console.warn('[SpriteLoader] Worker error, falling back to sync background removal:', err);
+        worker.terminate();
+        URL.revokeObjectURL(workerUrl);
+        removeWhiteBackgroundSync(imageData, w, h);
+        ctx.putImageData(imageData, 0, 0);
+        resolve(canvas);
+      };
+
+      worker.postMessage({ imageData, w, h }, [imageData.data.buffer]);
+    } catch (err) {
+      console.warn('[SpriteLoader] Worker creation failed (likely CSP block), using sync fallback:', err.message);
+      removeWhiteBackgroundSync(imageData, w, h);
+      ctx.putImageData(imageData, 0, 0);
       resolve(canvas);
-    };
-
-    worker.postMessage({ imageData, w, h }, [imageData.data.buffer]);
+    }
   });
+}
+
+// Synchronous fallback for background removal
+function removeWhiteBackgroundSync(imageData, w, h) {
+  const data = imageData.data;
+  const total = w * h;
+
+  const isNearWhite = (pos) => {
+    const i = pos * 4;
+    return data[i] > 225 && data[i + 1] > 225 && data[i + 2] > 225 && data[i + 3] > 100;
+  };
+
+  const visited = new Uint8Array(total);
+  const isBg = new Uint8Array(total);
+  const queue = [];
+  let head = 0;
+
+  // Seed
+  for (let x = 0; x < w; x++) {
+    const top = x, bot = (h - 1) * w + x;
+    if (isNearWhite(top) && !visited[top]) { visited[top] = 1; isBg[top] = 1; queue.push(top); }
+    if (isNearWhite(bot) && !visited[bot]) { visited[bot] = 1; isBg[bot] = 1; queue.push(bot); }
+  }
+  for (let y = 1; y < h - 1; y++) {
+    const left = y * w, right = y * w + (w - 1);
+    if (isNearWhite(left) && !visited[left]) { visited[left] = 1; isBg[left] = 1; queue.push(left); }
+    if (isNearWhite(right) && !visited[right]) { visited[right] = 1; isBg[right] = 1; queue.push(right); }
+  }
+
+  // BFS
+  while (head < queue.length) {
+    const pos = queue[head++];
+    const x = pos % w;
+    const y = (pos - x) / w;
+
+    if (x > 0) {
+      const n = pos - 1;
+      if (!visited[n] && isNearWhite(n)) { visited[n] = 1; isBg[n] = 1; queue.push(n); }
+    }
+    if (x < w - 1) {
+      const n = pos + 1;
+      if (!visited[n] && isNearWhite(n)) { visited[n] = 1; isBg[n] = 1; queue.push(n); }
+    }
+    if (y > 0) {
+      const n = pos - w;
+      if (!visited[n] && isNearWhite(n)) { visited[n] = 1; isBg[n] = 1; queue.push(n); }
+    }
+    if (y < h - 1) {
+      const n = pos + w;
+      if (!visited[n] && isNearWhite(n)) { visited[n] = 1; isBg[n] = 1; queue.push(n); }
+    }
+  }
+
+  // Apply transparency
+  for (let i = 0; i < total; i++) {
+    if (isBg[i]) {
+      data[i * 4 + 3] = 0;
+    }
+  }
+
+  // Anti-alias
+  for (let i = 0; i < total; i++) {
+    if (!isBg[i] && data[i * 4 + 3] > 0) {
+      const x = i % w;
+      const y = (i - x) / w;
+      let bgNeighbors = 0;
+      if (x > 0 && isBg[i - 1]) bgNeighbors++;
+      if (x < w - 1 && isBg[i + 1]) bgNeighbors++;
+      if (y > 0 && isBg[i - w]) bgNeighbors++;
+      if (y < h - 1 && isBg[i + w]) bgNeighbors++;
+
+      if (bgNeighbors >= 2) {
+        data[i * 4 + 3] = Math.max(60, data[i * 4 + 3] - 80);
+      }
+    }
+  }
 }
 
 // ────────────────────────────────────────────
@@ -464,13 +559,14 @@ export function getSprite(breed) {
   }
 
   // Trigger lazy loading
-  if (!loadingBreeds[breed]) {
+  if (!loadingBreeds[breed] && !failedBreeds[breed]) {
     loadingBreeds[breed] = true;
     processBreed(breed).then(() => {
       delete loadingBreeds[breed];
     }).catch(err => {
       console.warn(`[SpriteLoader] Failed to lazily load breed "${breed}":`, err);
       delete loadingBreeds[breed];
+      failedBreeds[breed] = true; // Mark as failed to prevent spamming infinite requests
     });
   }
 
