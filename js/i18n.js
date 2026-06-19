@@ -88,6 +88,7 @@ export const translations = {
     breed_white: "하얀 고양이",
     breed_grey: "러시안 블루",
     breed_scottish: "스코티시 폴드",
+    breed_sphynx: "스핑크스 고양이",
 
     // Logs & Alerts (Dynamic)
     log_spawn_yarn: "바닥에 🧶 털실 뭉치를 놓았습니다.",
@@ -250,6 +251,7 @@ export const translations = {
     breed_white: "White",
     breed_grey: "Russian Blue",
     breed_scottish: "Scottish Fold",
+    breed_sphynx: "Sphynx",
 
     // Logs & Alerts (Dynamic)
     log_spawn_yarn: "Placed a 🧶 Yarn Ball on the floor.",

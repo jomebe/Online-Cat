@@ -7,7 +7,7 @@ export class Cat {
   constructor(name, breed, options = {}) {
     this.id = 'cat_' + Math.random().toString(36).substr(2, 9);
     this.name = name || 'Nabi';
-    this.breed = breed || 'tabby'; // tabby, tuxedo, calico, siamese, black, white, ginger, grey
+    this.breed = breed || 'tabby'; // tabby, tuxedo, calico, siamese, black, white, ginger, grey, sphynx
     this.accessories = options.accessories || []; // 'collar', 'ribbon', 'hat', 'glasses'
     this.gender = options.gender || (Math.random() > 0.5 ? 'male' : 'female');
     this.spriteFrames = null; // Set after sprites load
@@ -70,6 +70,8 @@ export class Cat {
         return { body: '#ffffff', eyes: '#70a1ff', nose: '#ffb8b8' };
       case 'grey':
         return { body: '#a4b0be', chest: '#ced6e0', stripes: '#747d8c', eyes: '#ffa502', nose: '#ffb8b8' };
+      case 'sphynx':
+        return { body: '#e8aaa3', chest: '#efbbb2', stripes: '#c98582', eyes: '#9acd66', nose: '#b76565' };
       case 'tabby':
       default:
         return { body: '#ced6e0', stripes: '#747d8c', chest: '#f1f2f6', eyes: '#2ed573', nose: '#ffb8b8' };

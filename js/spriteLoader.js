@@ -13,6 +13,7 @@ const BREED_SPRITE_MAP = {
   tabby:    'tabby',
   scottish: 'tabby',
   siamese:  'siamese',
+  sphynx:   'sphynx',
 };
 
 // Layout: how poses are arranged in each sprite sheet
@@ -25,6 +26,7 @@ const LAYOUT = {
   calico:  { cols: 4, rows: 1, count: 4 },
   tabby:   { cols: 4, rows: 1, count: 4 },
   siamese: { cols: 2, rows: 2, count: 4 },
+  sphynx:  { cols: 4, rows: 1, count: 4 },
 };
 
 // Layout for walk animation sheets
@@ -36,6 +38,7 @@ const WALK_LAYOUT = {
   calico:  { cols: 4, rows: 1, count: 4 },
   tabby:   { cols: 4, rows: 1, count: 4 },
   siamese: { cols: 2, rows: 2, count: 4 },
+  sphynx:  { cols: 4, rows: 1, count: 4 },
 };
 
 // Layout for pet animation sheets
@@ -47,6 +50,7 @@ const PET_LAYOUT = {
   calico:  { cols: 4, rows: 1, count: 4 },
   tabby:   { cols: 2, rows: 2, count: 4 },
   siamese: { cols: 4, rows: 1, count: 4 }, // Siamese pet sheet has 4 frames in a 4x1 grid
+  sphynx:  { cols: 2, rows: 2, count: 4 },
 };
 
 // ── Global sprite cache ──

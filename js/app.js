@@ -882,7 +882,8 @@ const breedMap = {
   black: '올블랙 고양이',
   white: '하얀 고양이',
   grey: '러시안 블루',
-  scottish: '스코티시 폴드'
+  scottish: '스코티시 폴드',
+  sphynx: '스핑크스 고양이'
 };
 
 function showCatDetails(cat) {
