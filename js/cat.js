@@ -40,6 +40,9 @@ export class Cat {
     this.legCycle = 0;
     this.tailWag = 0;
     this.earWiggle = 0;
+    this.jumpOffset = 0;
+    this.jumpVelocity = 0;
+    this.jumpCooldown = 0;
     this.isSleeping = false;
     this.isBeingPet = false;
     this.isDragging = false;
@@ -89,6 +92,7 @@ export class Cat {
 
   update(width, height, floorY, toys, laser, delta) {
     this.animTime += delta;
+    this.updateJump(delta);
 
     // Handle scale LERP based on observation mode
     this.targetScale = this.observationMode ? 3.2 : 1.0;
@@ -114,6 +118,8 @@ export class Cat {
       this.hitTimer -= delta;
       this.vx = 0;
       this.vy = 0;
+      this.jumpOffset = 0;
+      this.jumpVelocity = 0;
     }
 
     // Update stars
@@ -136,6 +142,8 @@ export class Cat {
     if (this.isDragging) {
       this.vx = 0;
       this.vy = 0;
+      this.jumpOffset = 0;
+      this.jumpVelocity = 0;
       this.leaveBox();
       return;
     }
@@ -144,6 +152,8 @@ export class Cat {
     if (this.isBeingPet) {
       this.state = 'pet';
       this.vx = 0;
+      this.jumpOffset = 0;
+      this.jumpVelocity = 0;
       this.leaveBox();
       if (Math.random() < 0.08) {
         this.hearts.push({
@@ -227,6 +237,9 @@ export class Cat {
         } else {
           this.vx = 0;
           // Pounce/pat animation triggers meow occasionally
+          if (Math.random() < 0.04) {
+            this.startJump(170);
+          }
           if (Math.random() < 0.02) {
             playMeow(this.breed === 'siamese' ? 'low' : 'happy');
           }
@@ -349,6 +362,7 @@ export class Cat {
           const distToYarnY = Math.abs(this.y - this.targetToy.y);
           if (distToYarnY < 65) {
             this.vx = 0;
+            this.startJump(145);
             this.targetToy.vx = this.direction * (4 + Math.random() * 4);
             this.targetToy.vy = -2 - Math.random() * 3;
             this.energy = Math.max(10, this.energy - 8);
@@ -496,6 +510,30 @@ export class Cat {
     }
   }
 
+  updateJump(delta) {
+    if (this.jumpCooldown > 0) {
+      this.jumpCooldown = Math.max(0, this.jumpCooldown - delta);
+    }
+
+    if (this.jumpOffset <= 0 && this.jumpVelocity <= 0) return;
+
+    const gravity = 420;
+    this.jumpOffset += this.jumpVelocity * delta;
+    this.jumpVelocity -= gravity * delta;
+
+    if (this.jumpOffset <= 0) {
+      this.jumpOffset = 0;
+      this.jumpVelocity = 0;
+      this.jumpCooldown = 0.35;
+    }
+  }
+
+  startJump(power = 150) {
+    if (this.jumpOffset > 0 || this.jumpCooldown > 0) return;
+    if (this.isDragging || this.isBeingPet || this.observationMode || this.inBox || this.state === 'sleep') return;
+    this.jumpVelocity = power;
+  }
+
   // Draw the cat using animated sprites
   draw(ctx) {
     // Lazy-load sprite frames if not yet set, or replace if current is a fallback and real sprite is now loaded
@@ -519,6 +557,9 @@ export class Cat {
       frameKey = 'pet'; animFPS = 3;
     } else if (this.state === 'sit') {
       frameKey = 'idle'; animFPS = 1.2;
+    }
+    if (this.jumpOffset > 0 && (this.state === 'idle' || this.state === 'sit')) {
+      frameKey = 'play'; animFPS = 5;
     }
     // idle uses default
 
@@ -579,8 +620,19 @@ export class Cat {
     const renderW = frame.width * scaleFactor * this.scale * scaleXMod;
     const renderH = frame.height * scaleFactor * this.scale * scaleYMod;
 
+    const shadowSquash = Math.max(0.55, 1 - this.jumpOffset / 80);
+
     ctx.save();
-    ctx.translate(this.x + shakeX, this.y + bodyYOffset);
+    ctx.translate(this.x, this.y);
+    ctx.globalAlpha = 0.12 * shadowSquash;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, renderW * 0.35 * shadowSquash, 5 * this.scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(this.x + shakeX, this.y + bodyYOffset - this.jumpOffset);
     ctx.rotate(rotation);
     ctx.scale(this.direction, 1); // flip based on direction
 
@@ -598,14 +650,6 @@ export class Cat {
     } else {
       ctx.drawImage(frame, drawX, drawY, renderW, renderH);
     }
-
-    // Shadow under cat (perfectly aligned with the floor at y=0)
-    ctx.globalAlpha = 0.12;
-    ctx.fillStyle = '#000';
-    ctx.beginPath();
-    ctx.ellipse(0, 0, renderW * 0.35, 5 * this.scale, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1.0;
 
     ctx.restore();
 
@@ -627,7 +671,7 @@ export class Cat {
     else if (this.state === 'play') displayName = '🎾 ' + this.name;
 
     // this.y is the floor anchor; name tag is placed at a stable offset above the floor
-    ctx.fillText(displayName, this.x, this.y - (85 + yOffset) * this.scale);
+    ctx.fillText(displayName, this.x, this.y - this.jumpOffset - (85 + yOffset) * this.scale);
     ctx.restore();
 
     // Render rising hearts
@@ -664,7 +708,7 @@ export class Cat {
     const spriteH = 70 * this.scale;
     const spriteW = 60 * this.scale; // approximate width
     const rx = this.x - spriteW / 2;
-    const ry = this.y - spriteH;
+    const ry = this.y - this.jumpOffset - spriteH;
     return (
       mx >= rx &&
       mx <= rx + spriteW &&
