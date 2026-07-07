@@ -164,7 +164,8 @@ export const translations = {
     prompt_supabase_key: "Supabase Anon Key를 입력해 주세요 (최초 1회 저장):\n대시보드 > Project Settings > API > anon public key 에서 복사할 수 있습니다.",
     confirm_logout: "계정에서 로그아웃하시겠습니까?",
     app_title_seo: "온라인 고양이 힐링 Sanctuary | Online Cat",
-    app_desc_seo: "나만의 고양이를 입양하고, 만져주고, 장난감으로 함께 놀아주며 힐링하는 온라인 고양이 방입니다."
+    app_desc_seo: "나만의 고양이를 입양하고, 만져주고, 장난감으로 함께 놀아주며 힐링하는 온라인 고양이 방입니다.",
+    scroll_to_guide: "📖 게임 가이드 & 도감 보기"
   },
   en: {
     // UI Elements
@@ -327,7 +328,8 @@ export const translations = {
     prompt_supabase_key: "Please enter your Supabase Anon Key (Saved once initially):\nYou can copy it from Dashboard > Project Settings > API > anon public key.",
     confirm_logout: "Are you sure you want to log out?",
     app_title_seo: "Online Cat Healing Sanctuary | Online Cat",
-    app_desc_seo: "Adopt your own cat, pet them, play with toys, and relax in this online cat room."
+    app_desc_seo: "Adopt your own cat, pet them, play with toys, and relax in this online cat room.",
+    scroll_to_guide: "📖 Game Guide & Breed Info"
   }
 };
 

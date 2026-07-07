@@ -29,13 +29,21 @@
   -webkit-user-drag: none;
 }
 
-html, body {
+html {
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  scroll-behavior: smooth;
+}
+
+body {
+  width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
   font-family: var(--font-body);
   color: var(--text-dark);
   background-color: #f1f2f6;
+  scroll-behavior: smooth;
 }
 
 /* Canvas container */
@@ -1505,3 +1513,186 @@ body.observation-active .sidebar-ad-container {
     bottom: auto;
   }
 }
+
+/* Scroll Indicator at the bottom of the game fold */
+.scroll-to-guide-btn {
+  position: absolute;
+  bottom: 85px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  background: var(--bg-glass);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-glass);
+  border-radius: 20px;
+  padding: 8px 18px;
+  color: var(--text-dark);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-main);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-title);
+  outline: none;
+}
+
+.scroll-to-guide-btn:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+  transform: translateX(-50%) translateY(-2px);
+}
+
+/* Hide scroll button in cinematic or observation mode */
+body.ui-hidden .scroll-to-guide-btn,
+body.observation-active .scroll-to-guide-btn {
+  display: none !important;
+}
+
+/* Prevent scroll and hide guide in cinematic view */
+body.ui-hidden {
+  overflow-y: hidden !important;
+}
+body.ui-hidden .game-guide-section {
+  display: none !important;
+}
+
+/* Custom Scrollbar for the page */
+body::-webkit-scrollbar {
+  width: 8px;
+}
+body::-webkit-scrollbar-track {
+  background: #f1f2f6;
+}
+body::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+}
+body::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+/* Game Guide Section Styling */
+.game-guide-section {
+  background-color: #fcfaf7;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 60px 24px 80px 24px;
+  font-family: var(--font-body);
+  color: #4a4a4a;
+  line-height: 1.6;
+}
+
+.guide-container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.guide-header {
+  text-align: center;
+  margin-bottom: 45px;
+}
+
+.guide-header h2 {
+  font-family: var(--font-title);
+  color: #c0392b;
+  font-size: 26px;
+  margin-bottom: 12px;
+  font-weight: 700;
+}
+
+.guide-header p {
+  font-size: 14.5px;
+  color: #777;
+}
+
+.guide-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  margin-bottom: 30px;
+}
+
+@media (max-width: 768px) {
+  .guide-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.guide-card {
+  background: white;
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+  border: 1px solid rgba(0,0,0,0.03);
+}
+
+.guide-card h3 {
+  font-family: var(--font-title);
+  color: #2d3436;
+  font-size: 18px;
+  margin-bottom: 15px;
+  border-bottom: 2px solid #ffeaa7;
+  padding-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.guide-card ul {
+  padding-left: 18px;
+  margin: 0;
+}
+
+.guide-card li {
+  margin-bottom: 12px;
+  font-size: 13.5px;
+}
+
+.guide-card li strong {
+  color: #2d3436;
+}
+
+.guide-full-width {
+  background: white;
+  border-radius: 16px;
+  padding: 30px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+  border: 1px solid rgba(0,0,0,0.03);
+}
+
+.guide-full-width h3 {
+  font-family: var(--font-title);
+  color: #2d3436;
+  font-size: 18px;
+  margin-bottom: 15px;
+  border-bottom: 2px solid #ffeaa7;
+  padding-bottom: 8px;
+  font-weight: 700;
+}
+
+.guide-full-width p {
+  font-size: 13.5px;
+  margin-bottom: 15px;
+  text-align: justify;
+}
+
+.guide-full-width p:last-child {
+  margin-bottom: 0;
+}
+
+/* Lang restrictions based on html lang attribute */
+html[lang="ko"] .lang-en-only {
+  display: none !important;
+}
+html[lang="en"] .lang-ko-only {
+  display: none !important;
+}
+html:not([lang="ko"]) .lang-ko-only {
+  display: none !important;
+}
+
